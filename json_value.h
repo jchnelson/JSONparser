@@ -20,6 +20,15 @@ public:
     JSONValue& operator=(bool b);
     JSONValue& operator=(double d);
     JSONValue& operator=(std::string s);
+    char get_val() { 
+        if (val == INT)
+            return 'i';
+        else if (val == DBL)
+            return 'd';
+        else if (val == BOOL)
+            return 'b';
+        else if (val = STR)
+            return 's'; };
     
 
 
