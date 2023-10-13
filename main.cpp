@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -14,46 +15,42 @@ using std::vector;
 using std::begin;
 using std::end;
 
+void print_object_info(JSONObject js)
+{
+    cout << "\n\n";
+    size_t objects_count = count_if(js.get_nested().cbegin(), js.get_nested().cend(),
+        [](const JSONObject* j) { return j != 0; });
+
+    size_t values_count = count_if(js.get_values().cbegin(), js.get_values().cend(),
+        [](const JSONValue* jv) { return jv != 0; });
+    cout << "number of keys: " << js.get_keys().size() << '\n';
+    cout << "objects : " << objects_count << '\n' << "values: " << values_count << "\n\n";
+
+    for (size_t i = 0; i != js.get_keys().size(); ++i)
+    {
+        cout << std::setw(20) << std::left << js.get_keys()[i].first << "type:"
+            << js.get_keys()[i].second << "    ";
+
+        if (js.get_keys()[i].second == 'j')
+            cout << "nested object has " << js.get_nested()[i]->get_keys().size()
+            << " keys and " << count_if(js.get_nested()[i]->get_keys().cbegin(),
+                js.get_nested()[i]->get_keys().cend(), []
+                (std::pair<std::string, char> p) { return p.second == 'j'; })
+            << " of those keys' values are objects\n";
+        else
+            cout << '\n';
+    }
+}
+
 
 int main()
 {
 
     JSONObject bob("counter_query.json");
 
-    cout << bob.get_keys().size() << '\n';
-    cout << bob.get_values().size() << '\n';
+    print_object_info(bob);
 
 
-    size_t objects_count = count_if(bob.get_nested().cbegin(), bob.get_nested().cend(),
-        [] ( const JSONObject* j) { return j != 0; });
-
-    size_t values_count = count_if(bob.get_values().cbegin(), bob.get_values().cend(),
-        [](const JSONValue* jv) { return jv != 0; });
-
-    cout << objects_count << '\n' << values_count << '\n';
-
-    for (const auto& key : bob.get_keys())
-        cout << key.first << '\n';
-
-    cout << bob.get_keys()[3].first << '\n';
-
-    if (bob.get_nested()[3] != 0)
-        cout << bob.get_nested()[3]->get_values().size() << '\n';
-    for (const auto& i : bob.get_nested()[3]->get_values())
-        cout << *i << " ";
-
-    cout << '\n';
-
-    if (bob.get_nested()[4] != 0)
-        cout << "four is object\n";
-    if (bob.get_keys()[4].second == 'j')
-        cout << "four is object\n";
-
-    auto steve = *bob.get_nested()[5];
-
-    cout << steve.get_keys().size() << '\n';
-    for (const auto& key : steve.get_keys())
-        cout << key.first << " " << key.second << '\n';
 
 
   // last value is a blank string and 
