@@ -50,7 +50,21 @@ int main()
 
     print_object_info(bob);
 
+    auto steve = bob.geto(5);
 
+    cout << "\n\nNEW OBJECT\n\n";
+
+    print_object_info(*steve);
+
+    auto& stever = steve->get_nested();
+
+    for (const auto& obj : stever)
+    {
+        if (obj != 0)
+        {
+            print_object_info(*obj);
+        }
+    }
 
 
   // last value is a blank string and 

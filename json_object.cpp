@@ -17,7 +17,7 @@ using std::begin;
 using std::end;
 using std::cout;
 
-bool fuck_off = false;
+bool zero_count = false;
 
 std::ofstream outlog("log.txt");
 
@@ -36,7 +36,7 @@ JSONObject::JSONObject(const std::string fn)
             keys.back().second = 'j';
         else
             keys.back().second = values.back()->type();
-        if (fuck_off)
+        if (zero_count)
             break;
     }
 }
@@ -59,7 +59,7 @@ JSONObject::JSONObject(std::istream* js)
             keys.back().second = 'j';
         else
             keys.back().second = values.back()->type();
-        if (fuck_off)
+        if (zero_count)
             break;
     }
 }
@@ -363,13 +363,19 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 string sub(buffer, 0, read_count);
                 //while (sub[0] != '{')
                 //    sub.erase(0, 1);
+                
                 nestret->obj_values.push_back(fix_nested(prf, '}', sub));
+                if (nestret->obj_values.back()->keys.size() != 0)
+                    nestret->keys.push_back(nestret->obj_values.back()->keys[0]);
+                else
+                { 
+                    nestret->keys.push_back({"no keys in object", 'j'});
+                }
                 //if (sub.find('{') != string::npos)
                 //{
                 //    nested_same(prf, '{', '}', sub);
                 //}
                 //outlog << sub << '\n\n';
-                cout << "this is here for a breakpoint!";
                 //std::istringstream* elemstream = new std::istringstream(sub);
                 //nestret->obj_values.push_back(new JSONObject(elemstream));
 
@@ -579,6 +585,6 @@ std::string JSONObject::get_next_key(std::istream& is)
     outlog << '\n';
     outlog << "returning " << ret << " as next key\n";
     if (read_size == 0)
-        fuck_off = true;
+        zero_count = true;
     return ret ;
 }
