@@ -127,6 +127,7 @@ JSONObject* JSONObject::geto(int i, int j, int k, int l)
 
 bool JSONObject::was_exp(std::istream& is, const char c)
 {
+    char what = is.peek();
     if (is.peek() == c)
     {
         is.get();
@@ -152,8 +153,6 @@ void JSONObject::nested_same(std::istream& is,
     {
         is.get(buffer, 10000, close); // to next close
         count = is.gcount();
-        if (count < 9999 && !was_exp(is, close))
-            cout << "how the fuck";
         //outlog << count << " characters read onto string and charcount is"
             //<< charcount << "\n";
         string bob = string(buffer, 0, count);
@@ -194,11 +193,10 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
     // string of the JSONObject that spawned it.  So, I need to feed ONLY
     // the string that directly belongs to the new JSONObject, and then 
     // immediately assign the string minus the substring to the parent string. 
-    size_t charcount = 1;
     char buffer[10000]{};
-    size_t count = s.size();
+    size_t counter = s.size();
     
-
+    auto origsize = s.size();
 
     if (s.find('{') == string::npos)
         
@@ -209,15 +207,20 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         {
             vector<JSONValue*> ret_initial;
 
+
+            if (count(s.begin(), s.end(), '[') != count(s.begin(), s.end(), ']'))
+                nested_same(is, '[', ']', s);
+
+
             // if you find a close end bracket before a colon, it's one value.  
 
             if (s.find(',') == string::npos)  // then its one value in square brackets
                                               // for some reason
             {    
                 JSONValue* oneval = new JSONValue();
-                s.pop_back(); // get rid of comma
-                s.pop_back(); // get rid of the brackets
-                s.erase(0);
+                s = s.substr(s.find('['));
+                s.erase(0,1);
+                s.erase(s.find(']'),1);
                 string noquotes;
                 for (const auto& ch : s)
                     if (ch != '"')
@@ -227,13 +230,20 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 return new JSONObject(ret_initial);
             }
 
-            is.get(buffer, 10000, ']');
-            s += string(buffer, 0, is.gcount());
-            while (s[0] != '[')
-                s.erase(0,1);
+            //is.getline(buffer, 10000, ']');
+            //s += string(buffer, 0, is.gcount());
+            
+            s.insert(s.begin() + origsize, ',');
+            s = s.substr(s.find('[')+1);
+            //while (s[0] != '[')
+             //   s.erase(0,1);
+            //s.erase(0,1);
             std::istringstream psarr(s);
-            psarr.get(buffer, 10000, '['); // discard space before opening bracket
-            was_exp(psarr, '[');
+            if (!psarr)
+                cout << "why";
+            
+            //psarr.get(buffer, 10000, '['); // discard space before opening bracket
+            //was_exp(psarr, '[');
             while (psarr)
             {
                 psarr.get(buffer, 10000, ',');
@@ -244,7 +254,14 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                     JSONValue* jv = new JSONValue();
                     if (std::all_of(begin(buffer), begin(buffer) + read_count,
                         [](const char c)
-                        { return isspace(c) || isdigit(c) || c == ']'; }))
+                        { return isspace(c) ||  ispunct(c) || c == ']'; }))
+                    {
+                        *jv = "empty brackets";
+                    }
+
+                    else if (std::all_of(begin(buffer), begin(buffer) + read_count,
+                        [](const char c)
+                        { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
                     {
                         //outlog << "it's a number\n";
                         for (size_t i = 0; i != read_count; ++i)
@@ -256,8 +273,17 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
 
 
                         }
-                        outlog << "argument to stoi was " << slop << '\n';
-                        *jv = std::stoi(slop);
+                        if (slop.find('.') != string::npos)
+                        {
+                            outlog << "argument to stod was:  " << slop << '\n';
+                            *jv = std::stod(slop);
+                        }
+                        else
+                        {
+                            outlog << "argument to stoi was:  " << slop << '\n';
+                            *jv = std::stoi(slop);  // empty brackets still end up here
+
+                        }
 
                         ret_initial.push_back(jv);
                     }
@@ -295,7 +321,6 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                     outlog << "that's not good";
                     ;
             }
-            was_exp(is, ']');
             was_exp(is, ',');
             return new JSONObject(ret_initial);
         }
@@ -312,34 +337,41 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         if (s.find('[') < s.find('{'))
         {
             
+            
+            
              // for stream, not to be changed, new "file"
                // to be transformed in place, set it up how it would be 
             nested_same(is, '[', ']', s);
+            s.insert(s.begin() + origsize, ',');
+            s = s.substr(s.find('[') + 1);
             //if (s.find('[',1) != string::npos)
             //    nested_same(is, '[', ']', s);
             was_exp(is, ',');
             //was_exp(is, '[');
             // outlog << s;
             auto first_curly = s.find('{');
-
+            
             string nester(s, first_curly);
+            auto last_curly = nester.find_last_of('}');
+            nester = nester.substr(0, last_curly+1);
             //outlog << nester;
             std::istringstream prf(nester); // "pretend file"
             while (prf)
             { 
                 prf.get(buffer, 10000, ',');
                 size_t read_count = prf.gcount();
-                string sub(buffer, 0, count);
-                fix_nested(prf, '}', sub);
-                if (sub.find('{') != string::npos)
-                {
-                    nested_same(prf, '{', '}', sub);
-                }
+                string sub(buffer, 0, read_count);
+                //while (sub[0] != '{')
+                //    sub.erase(0, 1);
+                nestret->obj_values.push_back(fix_nested(prf, '}', sub));
+                //if (sub.find('{') != string::npos)
+                //{
+                //    nested_same(prf, '{', '}', sub);
+                //}
                 //outlog << sub << '\n\n';
-                while (sub[0] != '{')
-                    sub.erase(0,1);
-                std::istringstream* elemstream = new std::istringstream(sub);
-                nestret->obj_values.push_back(new JSONObject(elemstream));
+                cout << "this is here for a breakpoint!";
+                //std::istringstream* elemstream = new std::istringstream(sub);
+                //nestret->obj_values.push_back(new JSONObject(elemstream));
 
             }
             // get next {}
@@ -349,51 +381,54 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
             // initialize the next JSONObject
 
         }
-        else if (s.find('{') != string::npos && 
-            s.find('{', s.find('{') +1) == string::npos)
-        {
-            was_exp(is, ',');
-            while (1)
-            { 
-                is.get(buffer, 10000, '}');
-                s += string(buffer, 0, is.gcount());
-                if (was_exp(is, '}'))
-                    break;
-            }
-            was_exp(is,',');
-            while (s[0] != '{')
-                s.erase(0,1);
-            return new JSONObject(new std::istringstream(s));
-        }
-        //else if (s[0] == '{' && s.find('{', 1) != string::npos)
-        else if (s.find('{',s.find('{')+1) != string::npos)
-        {
-            outlog << "this is the new case";
-
-            was_exp(is, ',');
+        else if (s.find('{') != string::npos)
+        { 
             nested_same(is, '{', '}', s);
-            //was_exp(is, ','); // is this necessary?
-            //was_exp(is, '[');
-            //outlog << s << '\n';
-            while (s[0] != '{')
-                s.erase(0, 1);
-            std::istringstream* newstring = new std::istringstream(s);
-            return new JSONObject(newstring);
-            //auto first_curly = s.find('{');
-            //const string nester(s, first_curly);
-            //outlog << nester;
-            //std::istringstream prf(nester); // "pretend file"
-            //prf.get(buffer, 10000, ',');
-            //size_t read_count = prf.gcount();
-            //string ohgod(buffer, 0, count);
+            if (s.find('{', s.find('{') + 1) == string::npos)
+            {
+                was_exp(is, ',');
+                //while (1)
+                //{ 
+                //    is.get(buffer, 10000, '}');
+                //    s += string(buffer, 0, is.gcount());
+                //    if (was_exp(is, '}'))
+                //        break;
+                //}
+                //was_exp(is,',');
+                while (s[0] != '{')
+                    s.erase(0,1);
+                return new JSONObject(new std::istringstream(s));
+            }
+            //else if (s[0] == '{' && s.find('{', 1) != string::npos)
+            else if (s.find('{',s.find('{')+1) != string::npos)
+            {
+                outlog << "this is the new case";
+
+                was_exp(is, ',');
+                // nested_same(is, '{', '}', s);
+                //was_exp(is, ','); // is this necessary?
+                //was_exp(is, '[');
+                //outlog << s << '\n';
+                while (s[0] != '{')
+                    s.erase(0, 1);
+                std::istringstream* newstring = new std::istringstream(s);
+                return new JSONObject(newstring);
+                //auto first_curly = s.find('{');
+                //const string nester(s, first_curly);
+                //outlog << nester;
+                //std::istringstream prf(nester); // "pretend file"
+                //prf.get(buffer, 10000, ',');
+                //size_t read_count = prf.gcount();
+                //string ohgod(buffer, 0, count);
             
-            //fix_nested(prf, '}', ohgod);
+                //fix_nested(prf, '}', ohgod);
             
-            //std::istringstream* newnest = new std::istringstream(ohgod);
-            //nestret->obj_values.push_back(new JSONObject(newnest));
-            //// get next {}
-            //return nestret;
+                //std::istringstream* newnest = new std::istringstream(ohgod);
+                //nestret->obj_values.push_back(new JSONObject(newnest));
+                //// get next {}
+                //return nestret;
             
+            }
         }
         // probably return fix_nested something or other
     }
@@ -433,6 +468,7 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
     char buffer[10000]{};
     string slop;
     is.get(buffer, 10000, ',');
+    // should I just check for the end bracket here?
     std::streamsize read_size = jsf->gcount();
     outlog << "next_value read_size: " << read_size << '\n';
     string tester(buffer, 0, read_size);
@@ -443,25 +479,33 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
         auto newread = is.gcount();
         read_size += newread;
         tester += string(buffer, 0, newread);
+        was_exp(is, '"');
+        tester += '"';
+        read_size += 1;
         if (is.peek() == 44)
             outlog << "comma inside quotes, fixed and added " << newread 
-            << " characters to string\n\n" << tester;
-
-        
+            << " characters to string\n\n" << tester;        
     }
-
-    
-
     // if quote index is not npos, and there is only one, grab until next quote
     // and then make sure comma was_exp.
 
     if (was_exp(is, ','))  // this area could yield an array, or a nested object
     {
-        tester += ',';
-        read_size += 1;
-        
-        if (std::all_of(begin(tester), begin(tester) + read_size, [](const char c)
-            { return isspace(c) || isdigit(c); }))
+        //tester += ',';  // this causes problems.  The "NO TRADE CHANNEL" option 
+                        // seems like it shouldn't enter here but it does, find out
+                        // why before you remove this, if you do
+        //read_size += 1;
+
+        if (std::all_of(begin(buffer), begin(buffer) + read_size,
+            [](const char c)
+            { return isspace(c) || ispunct(c) || c == ']'; }))
+        {
+            *ret = "empty brackets";
+        }
+
+        else if (std::all_of(begin(buffer), begin(buffer) + read_size,
+            [](const char c)
+            { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
         {
             //outlog << "it's a number\n";
             for (size_t i = 0; i != read_size; ++i)
@@ -470,29 +514,17 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
                 {
                     slop.push_back(tester[i]);
                 }
-
             }
             if (slop.find('.') != string::npos)
             {
                 outlog << "argument to stod was:  " << slop << '\n';
-                try {
-                    *ret = std::stod(slop);
-                }
-                catch (std::exception e) {
-                    outlog << e.what() << " after stod call";
-                    throw;
-                }
+                *ret = std::stod(slop);
             }
             else
             {
                 outlog << "argument to stoi was:  " << slop << '\n';
-                try {
                 *ret = std::stoi(slop);
-                }
-                catch (std::exception e) {
-                    outlog << e.what() << " after stoi call";
-                    throw;
-                }
+
             }
         }
         else

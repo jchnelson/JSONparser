@@ -27,9 +27,11 @@ public:
             return 'd';
         else if (val == BOOL)
             return 'b';
-        else if (val = STR)
+        else if (val == STR)
             return 's'; 
-    };
+        else
+            return 0;
+    }
     
 
 
