@@ -30,7 +30,7 @@ JSONObject::JSONObject(const std::string fn)
 
     while (jsf)
     {
-        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char, change later
+        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char
         values.push_back(get_next_value(*jsf));
         if (values.back() == 0)
             keys.back().second = 'j';
@@ -45,15 +45,13 @@ JSONObject::JSONObject(const std::string fn)
 JSONObject::JSONObject(std::istream* js)
     : jsf(js)
 {
-    jsf->get(); // discard opening bracket if it exists?
-    // previous function identified that there is at least some kind
-    // of opening bracket before this.  Is it still useful to know what kind?
+    jsf->get(); // discard opening bracket 
     
     outlog << "Initializing new JSONObject from istream pointer\n";
 
     while (*jsf)
     {
-        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char, change later
+        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char
         values.push_back(get_next_value(*jsf));
         if (values.back() == 0)
             keys.back().second = 'j';
@@ -123,6 +121,39 @@ JSONObject* JSONObject::geto(int i, int j, int k, int l)
         return 0;
 }
 
+JSONValue* JSONObject::key_val(const std::string& s)
+{
+    auto itempos = find_if(keys.cbegin(), keys.cend(), [&]
+    (std::pair<std::string, char> key) { return key.first == s; });
+
+    if (itempos != keys.cend())
+    {
+        size_t index = itempos - keys.cbegin();
+        return values[index];
+    }
+    else
+    {
+        return 0;
+    }
+    
+}
+
+JSONObject* JSONObject::key_obj(const std::string& s)
+{
+    auto itempos = find_if(keys.cbegin(), keys.cend(), [&]
+    (std::pair<std::string, char> key) { return key.first == s; });
+
+    if (itempos != keys.cend())
+    {
+        size_t index = itempos - keys.cbegin();
+        return obj_values[index];
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 
 
 bool JSONObject::was_exp(std::istream& is, const char c)
@@ -131,7 +162,6 @@ bool JSONObject::was_exp(std::istream& is, const char c)
     if (is.peek() == c)
     {
         is.get();
-        //outlog << "removed expected " << c << '\n';
         return true;
     }
     else
@@ -144,7 +174,6 @@ void JSONObject::nested_same(std::istream& is,
                              const char open, const char close, string& s)
 {
     char buffer[10000]{};
-    //outlog << s << '\n';
     size_t charcount = std::count(s.begin(), s.end(), open);
     //outlog << "\nnumber of extra '" << open << "' : " << charcount << '\n';
     size_t next_index = s.find(open);  // next nested open bracket
@@ -153,21 +182,18 @@ void JSONObject::nested_same(std::istream& is,
     {
         is.get(buffer, 10000, close); // to next close
         count = is.gcount();
-        //outlog << count << " characters read onto string and charcount is"
-            //<< charcount << "\n";
-        string bob = string(buffer, 0, count);
+        string bob = string(buffer, 0, count); 
         size_t bobcount = std::count(bob.begin(), bob.end(), open);
         charcount += bobcount;
-        //outlog << bob << '\n';
         size_t prevsize = s.size();
         s += bob;  // add section 
 
         if (was_exp(is, close))
         {
-            outlog << "expected closing bracket found\n";
+            //outlog << "expected closing bracket found\n";
             s += close; // add the close bracket
             --charcount;
-            outlog << "charcount before condition: " << charcount << "\n";
+            //outlog << "charcount before condition: " << charcount << "\n";
 
             if (charcount == 0)
             {
@@ -185,23 +211,13 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
 {
     if (s.size() == 0)
         return 0;
-    // so I have a string with brackets in it.  At this point I know only
-    // that there is one 'c' opening bracket.  I have only handled the case
-    // of only square brackets so far.  I basically need to create a new
-    // JSONObject every time I see an opening curly or a square curly,
-    // and then its full substring needs to be subtracted from the 
-    // string of the JSONObject that spawned it.  So, I need to feed ONLY
-    // the string that directly belongs to the new JSONObject, and then 
-    // immediately assign the string minus the substring to the parent string. 
+
     char buffer[10000]{};
-    size_t counter = s.size();
-    
-    auto origsize = s.size();
+    size_t origsize = s.size();
 
     if (s.find('{') == string::npos)
         
     {
-        //outlog << s;
         size_t index = s.find('[', s.find('[')+1);
         if (index == string::npos) // then it's just an array of values
         {
@@ -229,21 +245,11 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 ret_initial.push_back(oneval);
                 return new JSONObject(ret_initial);
             }
-
-            //is.getline(buffer, 10000, ']');
-            //s += string(buffer, 0, is.gcount());
             
             s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('[')+1);
-            //while (s[0] != '[')
-             //   s.erase(0,1);
-            //s.erase(0,1);
             std::istringstream psarr(s);
-            if (!psarr)
-                cout << "why";
-            
-            //psarr.get(buffer, 10000, '['); // discard space before opening bracket
-            //was_exp(psarr, '[');
+
             while (psarr)
             {
                 psarr.get(buffer, 10000, ',');
@@ -263,28 +269,23 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                         [](const char c)
                         { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
                     {
-                        //outlog << "it's a number\n";
                         for (size_t i = 0; i != read_count; ++i)
                         {
                             if (!isspace(buffer[i]) && buffer[i] != ']')
                             {
                                 slop.push_back(buffer[i]);
                             }
-
-
                         }
                         if (slop.find('.') != string::npos)
                         {
-                            outlog << "argument to stod was:  " << slop << '\n';
+                            //outlog << "argument to stod was:  " << slop << '\n';
                             *jv = std::stod(slop);
                         }
                         else
                         {
-                            outlog << "argument to stoi was:  " << slop << '\n';
-                            *jv = std::stoi(slop);  // empty brackets still end up here
-
+                            //outlog << "argument to stoi was:  " << slop << '\n';
+                            *jv = std::stoi(slop);
                         }
-
                         ret_initial.push_back(jv);
                     }
                     else
@@ -313,13 +314,8 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                             *jv = slop;
 
                         ret_initial.push_back(jv);
-
                     }
-              
                 }
-                else
-                    outlog << "that's not good";
-                    ;
             }
             was_exp(is, ',');
             return new JSONObject(ret_initial);
@@ -336,150 +332,62 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         JSONObject* nestret = new JSONObject();
         if (s.find('[') < s.find('{'))
         {
-            
-            
-            
-             // for stream, not to be changed, new "file"
-               // to be transformed in place, set it up how it would be 
+               // new "file" to be transformed in place, 
+               // set it up how it would be
             nested_same(is, '[', ']', s);
             s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('[') + 1);
-            //if (s.find('[',1) != string::npos)
-            //    nested_same(is, '[', ']', s);
             was_exp(is, ',');
-            //was_exp(is, '[');
-            // outlog << s;
+
             auto first_curly = s.find('{');
-            
-            string nester(s, first_curly);
+            string nester(s, first_curly); // discard beginning section with '['
             auto last_curly = nester.find_last_of('}');
-            nester = nester.substr(0, last_curly+1);
-            //outlog << nester;
+            nester = nester.substr(0, last_curly+1); // discard section with ending ']'
             std::istringstream prf(nester); // "pretend file"
             while (prf)
             { 
                 prf.get(buffer, 10000, ',');
                 size_t read_count = prf.gcount();
                 string sub(buffer, 0, read_count);
-                //while (sub[0] != '{')
-                //    sub.erase(0, 1);
                 
                 nestret->obj_values.push_back(fix_nested(prf, '}', sub));
                 if (nestret->obj_values.back()->keys.size() != 0)
-                    nestret->keys.push_back(nestret->obj_values.back()->keys[0]);
+                { 
+                    nestret->keys.push_back({nestret->obj_values.back()->keys[0].first,
+                        'j'});  // place keyname of first key to avoid unnamed objects
+                }
                 else
                 { 
                     nestret->keys.push_back({"no keys in object", 'j'});
                 }
-                //if (sub.find('{') != string::npos)
-                //{
-                //    nested_same(prf, '{', '}', sub);
-                //}
-                //outlog << sub << '\n\n';
-                //std::istringstream* elemstream = new std::istringstream(sub);
-                //nestret->obj_values.push_back(new JSONObject(elemstream));
-
             }
-            // get next {}
             return nestret;
-
-            // create the string to be passed to another istringstream to 
-            // initialize the next JSONObject
-
         }
         else if (s.find('{') != string::npos)
         { 
             nested_same(is, '{', '}', s);
-            if (s.find('{', s.find('{') + 1) == string::npos)
-            {
-                was_exp(is, ',');
-                //while (1)
-                //{ 
-                //    is.get(buffer, 10000, '}');
-                //    s += string(buffer, 0, is.gcount());
-                //    if (was_exp(is, '}'))
-                //        break;
-                //}
-                //was_exp(is,',');
-                while (s[0] != '{')
-                    s.erase(0,1);
-                return new JSONObject(new std::istringstream(s));
-            }
-            //else if (s[0] == '{' && s.find('{', 1) != string::npos)
-            else if (s.find('{',s.find('{')+1) != string::npos)
-            {
-                outlog << "this is the new case";
-
-                was_exp(is, ',');
-                // nested_same(is, '{', '}', s);
-                //was_exp(is, ','); // is this necessary?
-                //was_exp(is, '[');
-                //outlog << s << '\n';
-                while (s[0] != '{')
-                    s.erase(0, 1);
-                std::istringstream* newstring = new std::istringstream(s);
-                return new JSONObject(newstring);
-                //auto first_curly = s.find('{');
-                //const string nester(s, first_curly);
-                //outlog << nester;
-                //std::istringstream prf(nester); // "pretend file"
-                //prf.get(buffer, 10000, ',');
-                //size_t read_count = prf.gcount();
-                //string ohgod(buffer, 0, count);
-            
-                //fix_nested(prf, '}', ohgod);
-            
-                //std::istringstream* newnest = new std::istringstream(ohgod);
-                //nestret->obj_values.push_back(new JSONObject(newnest));
-                //// get next {}
-                //return nestret;
-            
-            }
+            was_exp(is, ',');
+            s = s.substr(s.find('{'));  // discard space before '{'
+            return new JSONObject(new std::istringstream(s));
         }
-        // probably return fix_nested something or other
     }
-    //char opener;
-    //if (c == ']')
-    //    opener = '[';
-    //else
-    //    opener = '{';
-
-    //size_t next_index = s.find(opener, 1);
-    //if (next_index == string::npos)
-    //    outlog << "additional " << opener << " not found: " <<
-    //    next_index << "\n current string  ";
-    //outlog << s << '\n';
-    //if (next_index != string::npos)
-    //{
-    //    outlog << "additional " << opener << " found at " << next_index << '\n';
-    //    nested_same(is, opener, c, s);
-    //}
-
-    // S should be the full open and close bracket of the type that opened it 
-    // at this point. i.e. it can be used to parse nested objects even though it
-    // didn't identify them
     was_exp(is, ',');
-    JSONObject* ret = new JSONObject(new std::istringstream(s));
-
-    return ret;
+    return new JSONObject(new std::istringstream(s));
 }
 
 
 JSONValue* JSONObject::get_next_value(std::istream& is)
 {
-    
-
     JSONValue* ret = new JSONValue();
     JSONObject* objret = new JSONObject();
     char buffer[10000]{};
     string slop;
     is.get(buffer, 10000, ',');
-    // should I just check for the end bracket here?
     std::streamsize read_size = jsf->gcount();
-    outlog << "next_value read_size: " << read_size << '\n';
+    //outlog << "next_value read_size: " << read_size << '\n';
     string tester(buffer, 0, read_size);
-    //outlog << tester << '\n';
-    if (tester.find('"') != string::npos && count(tester.begin(), tester.end(), '"') == 1)
+    if (tester.find('"') != string::npos && 
+        count(tester.begin(), tester.end(), '"') == 1)
     {
         is.get(buffer, 10000, '"');
         auto newread = is.gcount();
@@ -497,11 +405,6 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
 
     if (was_exp(is, ','))  // this area could yield an array, or a nested object
     {
-        //tester += ',';  // this causes problems.  The "NO TRADE CHANNEL" option 
-                        // seems like it shouldn't enter here but it does, find out
-                        // why before you remove this, if you do
-        //read_size += 1;
-
         if (std::all_of(begin(buffer), begin(buffer) + read_size,
             [](const char c)
             { return isspace(c) || ispunct(c) || c == ']'; }))
@@ -513,7 +416,6 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             [](const char c)
             { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
         {
-            //outlog << "it's a number\n";
             for (size_t i = 0; i != read_size; ++i)
             {
                 if (!isspace(tester[i]))
@@ -530,7 +432,6 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             {
                 outlog << "argument to stoi was:  " << slop << '\n';
                 *ret = std::stoi(slop);
-
             }
         }
         else
@@ -538,9 +439,8 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             bool has_square = tester.find('[') != string::npos;
             bool has_curly = tester.find('{') != string::npos;
             if (has_curly || has_square)
-            {  // this branch needs to push_back to obj_values at some point, then
-                // return a null pointer 
-                delete ret;  // this probably needs to be done in another function?
+            {  
+                delete ret; // JSONValue not needed, only placeholder 
                 ret = 0;
                 objret = fix_nested(is, ']', tester);
                 obj_values.push_back(objret);
@@ -553,26 +453,24 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             else if (tester == "null")
                 *ret = 0;
             else
-                *ret = tester; // moved, was inside two lines above
+                *ret = tester;
         }
     }
-    //outlog << ret << '\n';
-    
     // if we're here, there was no nested object, only a value
-    delete objret;
+    delete objret; // so the JSONObject is not needed
     objret = 0;
-    obj_values.push_back(objret); // maintain matching indices
+    obj_values.push_back(objret);
     return ret;
 }
 
 std::string JSONObject::get_next_key(std::istream& is)
 {
     char arr[10000]{};
-    outlog << "getting next key\n";
-    is.get(arr, 10000, ':'); // grab until ", leave on stream
+    //outlog << "getting next key\n";
+    is.get(arr, 10000, ':');
     
     std::streamsize read_size = is.gcount();
-    outlog << read_size << " gcount\n";
+    //outlog << read_size << " gcount\n";
     was_exp(is, ':');
     string ret;
     for (size_t i = 0; i != read_size; ++i)
@@ -582,8 +480,8 @@ std::string JSONObject::get_next_key(std::istream& is)
         if (arr[i] != '"' && !isspace(arr[i]))
             ret.push_back(arr[i]);
     }
-    outlog << '\n';
-    outlog << "returning " << ret << " as next key\n";
+    //outlog << '\n';
+    //outlog << "returning " << ret << " as next key\n";
     if (read_size == 0)
         zero_count = true;
     return ret ;

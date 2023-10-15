@@ -30,6 +30,9 @@ public:
     JSONObject* geto(int, int, int);
     JSONObject* geto(int, int, int, int);
 
+    JSONValue* key_val(const std::string&);
+    JSONObject* key_obj(const std::string&);
+
 
 
 private:

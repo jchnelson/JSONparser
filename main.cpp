@@ -28,7 +28,7 @@ void print_object_info(JSONObject js)
 
     for (size_t i = 0; i != js.get_keys().size(); ++i)
     {
-        cout << std::setw(20) << std::left << js.get_keys()[i].first << "type:"
+        cout << std::setw(30) << std::left << js.get_keys()[i].first << "type:"
             << js.get_keys()[i].second << "    ";
 
         if (js.get_keys()[i].second == 'j')
@@ -50,21 +50,54 @@ int main()
 
     print_object_info(bob);
 
-    auto steve = bob.geto(5);
+    auto steve = bob.geto(4);
+
+    for (const auto& key : steve->get_keys())
+        cout << key.first << " " << key.second << '\n';
+
+    cout << *steve->get_values()[4];
+
+    auto& foods = *bob.key_obj("foods");
+
+    auto& nuts = *foods.geto(1)->key_obj("foodNutrients");
+
+    print_object_info(nuts);
+
+ /*   auto steve = bob.geto(5);
 
     cout << "\n\nNEW OBJECT\n\n";
 
     print_object_info(*steve);
 
-    auto& stever = steve->get_nested();
+    auto& stever = *steve->get_nested().back();
 
-    for (const auto& obj : stever)
+    print_object_info(stever);
+
+    auto& chris = *stever.get_nested()[11];
+
+    auto& fml = chris.get_keys();
+    auto& fmlv = chris.get_values();
+    auto& fmlj = chris.get_nested();
+
+    for (size_t i = 0; i != fml.size(); ++i)
     {
-        if (obj != 0)
-        {
-            print_object_info(*obj);
-        }
-    }
+
+        cout << fml[i].first << '\n';
+        for (size_t j = 0; j != fmlj[i]->get_keys().size(); ++j )
+            cout << fmlj[i]->get_keys()[j].first << " : " 
+                 << *fmlj[i]->get_values()[j] << '\n';
+
+    }*/
+
+    //print_object_info(chris);
+
+    //for (const auto& obj : stever)
+    //{
+    //    if (obj != 0)
+    //    {
+    //        print_object_info(*obj);
+    //    }
+    //}
 
 
   // last value is a blank string and 
