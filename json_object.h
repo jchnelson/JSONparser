@@ -9,6 +9,8 @@
 
 #include "json_value.h"
 
+
+
 class JSONObject
 {
 public:
@@ -51,3 +53,5 @@ private:
     JSONValue* get_next_value(std::istream&);
     
 };
+
+void print_object_info(JSONObject js);

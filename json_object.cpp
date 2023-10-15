@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 #include <algorithm>
@@ -36,9 +37,19 @@ JSONObject::JSONObject(const std::string fn)
             keys.back().second = 'j';
         else
             keys.back().second = values.back()->type();
+        if (none_of(keys.back().first.cbegin(), keys.back().first.cend(), []
+        (const char& c) { return isalpha(c) || isdigit(c); }))
+        {
+            keys.pop_back();
+            values.pop_back();
+            obj_values.pop_back();
+        }
         if (zero_count)
             break;
+
     }
+    delete jsf;
+    jsf = 0;
 }
 
 
@@ -57,9 +68,18 @@ JSONObject::JSONObject(std::istream* js)
             keys.back().second = 'j';
         else
             keys.back().second = values.back()->type();
+        if (none_of(keys.back().first.cbegin(), keys.back().first.cend(), []
+        (const char& c) { return isalpha(c) || isdigit(c); }))
+        {
+            keys.pop_back();
+            values.pop_back();
+            obj_values.pop_back();
+        }
         if (zero_count)
             break;
     }
+    delete jsf;
+    jsf = 0;
 }
 
 JSONValue* JSONObject::getv(int i)
@@ -293,22 +313,12 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                         bool initial_space_skipped = false;
                         for (size_t i = 0; i != read_count; ++i)
                         {
-                            if (!initial_space_skipped && isspace(buffer[i]))
-                            {
-                                if (!isspace(buffer[i + 1]))
-                                    initial_space_skipped = true;
-                                continue;
-                            }
                             if (buffer[i] != '"' && buffer[i] != ']')
                             {
                                 slop.push_back(buffer[i]);
                             }
                         }
-                        if (slop == "true")
-                            *jv = bool(true);
-                        else if (slop == "false")
-                            *jv = bool(false);
-                        else if (slop == "null")
+                        if (slop == "null")
                             *jv = 0;
                         else
                             *jv = slop;
@@ -367,6 +377,7 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         { 
             nested_same(is, '{', '}', s);
             was_exp(is, ',');
+            s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('{'));  // discard space before '{'
             return new JSONObject(new std::istringstream(s));
         }
@@ -446,14 +457,17 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
                 obj_values.push_back(objret);
                 return ret;               
             }
-            else if (tester == "true")
-                *ret = bool(true);
-            else if (tester == "false")
-                *ret = bool(false);
-            else if (tester == "null")
-                *ret = 0;
-            else
-                *ret = tester;
+            else 
+            {
+                string noquotes;
+                for (const auto& ch : tester)
+                    if (ch != '"' && ch != ']')
+                        noquotes += ch;
+                if (noquotes == "null")
+                    *ret = 0;
+                else
+                    *ret = noquotes;
+            }
         }
     }
     // if we're here, there was no nested object, only a value
@@ -485,4 +499,34 @@ std::string JSONObject::get_next_key(std::istream& is)
     if (read_size == 0)
         zero_count = true;
     return ret ;
+}
+
+
+void print_object_info(JSONObject js)
+{
+    cout << "\n\n";
+    size_t objects_count = count_if(js.get_nested().cbegin(), js.get_nested().cend(),
+        [](const JSONObject* j) { return j != 0; });
+
+    size_t values_count = count_if(js.get_values().cbegin(), js.get_values().cend(),
+        [](const JSONValue* jv) { return jv != 0; });
+    cout << "number of keys: " << js.get_keys().size() << '\n';
+    cout << "non-null objects : " << objects_count << '\n' << "non-null values: " << values_count << "\n\n";
+
+    for (size_t i = 0; i != js.get_keys().size(); ++i)
+    {
+        cout << std::setw(20) << std::left << js.get_keys()[i].first << "type:"
+            << js.get_keys()[i].second << "    ";
+
+        if (js.get_keys()[i].second == 'j')
+            cout << "nested object has " << js.get_nested()[i]->get_keys().size()
+            << " keys, " << js.get_nested()[i]->get_values().size()
+            << " values and " << count_if(js.get_nested()[i]->get_keys().cbegin(),
+                js.get_nested()[i]->get_keys().cend(), []
+                (std::pair<std::string, char> p) { return p.second == 'j'; })
+            << " of those keys' values are objects\n";
+        else
+            cout << '\n';
+    }
+    cout << '\n';
 }
