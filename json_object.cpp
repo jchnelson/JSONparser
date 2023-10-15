@@ -199,59 +199,84 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
             {
                 psarr.get(buffer, 10000, ',');
                 std::streamsize read_count = psarr.gcount();
-                if ( was_exp(psarr, ',') || !psarr )
-                {
-                    string slop;
-                    JSONBase* jv;
-                    string pairstring = std::to_string(pos);
-                    if ( std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
-                        [](const char c)
-                        { return isspace(c) ||  ispunct(c) || c == ']'; }))
-                    {
-                        jv = new JSONValue("Empty Brackets");
-                    }
+                was_exp(psarr, ',');
 
-                    else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
-                        [](const char c)
-                        { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+                string slop;
+                JSONBase* jv;
+                string pairstring = std::to_string(pos);
+                if ( std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
+                    [](const char c)
+                    { return isspace(c) ||  ispunct(c) || c == ']'; }))
+                {
+                    jv = new JSONValue("Empty Brackets");
+                }
+
+                else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
+                    [](const char c)
+                    { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+                {
+                    for (size_t i = 0; i != read_count; ++i)
                     {
-                        for (size_t i = 0; i != read_count; ++i)
+                        if (!isspace(buffer[i]) && buffer[i] != ']')
                         {
-                            if (!isspace(buffer[i]) && buffer[i] != ']')
-                            {
-                                slop.push_back(buffer[i]);
-                            }
+                            slop.push_back(buffer[i]);
                         }
-                        if (slop.find('.') != string::npos)
-                        {
-                            //outlog << "argument to stod was:  " << slop << '\n';
-                            jv = new JSONValue(std::stod(slop));
-                        }
-                        else
-                        {
-                            //outlog << "argument to stoi was:  " << slop << '\n';
-                            jv = new JSONValue(std::stoi(slop));
-                        }
+                    }
+                    if (slop.find('.') != string::npos)
+                    {
+                        //outlog << "argument to stod was:  " << slop << '\n';
+                        jv = new JSONValue(std::stod(slop));
                     }
                     else
                     {
-                        bool initial_space_skipped = false;
-                        for (size_t i = 0; i != read_count; ++i)
-                        {
-                            if (buffer[i] != '"' && buffer[i] != ']')
-                            {
-                                slop.push_back(buffer[i]);
-                            }
-                        }
-                        if (slop == "null")
-                            jv = new JSONValue(0);
-                        else
-                            jv = new JSONValue(slop);
+                        //outlog << "argument to stoi was:  " << slop << '\n';
+                        jv = new JSONValue(std::stoi(slop));
                     }
-                    ret_initial->valmap.insert({ pairstring, jv });
-                    ret_initial->keyindex.push_back(pairstring);
-                    ++pos;
                 }
+                else
+                {
+                    bool initial_space_skipped = false;
+                    for (size_t i = 0; i != read_count; ++i)
+                    {
+                        if (buffer[i] != '"' && buffer[i] != ']' && buffer[i] != '}')
+                        {
+                            slop.push_back(buffer[i]);
+                        }
+                    }
+                    if (slop.find("true") != string::npos)
+                    {
+                        string the_rest(slop);
+                        the_rest.erase(the_rest.find("true"), 4);
+                        if (all_of(the_rest.cbegin(), the_rest.cend(), [] 
+                        (const char& c) { return isspace(c) || c == ']' 
+                            || c == '}' || !isalpha(c) || !isdigit(c); } ))
+                        {
+                            JSONValue* jb = new JSONValue();
+                            jb->b_eq(true);
+                            jv = jb;
+                        }
+                    }
+                    else if (slop.find("false") != string::npos)
+                    {
+                        string the_rest(slop);
+                        the_rest.erase(the_rest.find("false"), 5);
+                        if (all_of(the_rest.cbegin(), the_rest.cend(), []
+                        (const char& c) { return isspace(c) || c == ']'
+                            || c == '}' || !isalpha(c) || !isdigit(c); }))
+                        {
+                            JSONValue* jb = new JSONValue();
+                            jb->b_eq(false);
+                            jv = jb;
+                        }
+                    }
+                    else if (slop == "null")
+                        jv = new JSONValue(0);
+                    else
+                        jv = new JSONValue(slop);
+                }
+                ret_initial->valmap.insert({ pairstring, jv });
+                ret_initial->keyindex.push_back(pairstring);
+                ++pos;
             }
             was_exp(is, ',');
             return ret_initial;
@@ -319,7 +344,7 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
     string tester(buffer, 0, read_size);
     if (tester.find('"') != string::npos && 
         count(tester.begin(), tester.end(), '"') == 1)
-    {
+    {    // if quote index is not npos, and there is only one, grab until next quote
         is.get(buffer, 10000, '"');
         auto newread = is.gcount();
         read_size += newread;
@@ -331,61 +356,81 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
             outlog << "comma inside quotes, fixed and added " << newread 
             << " characters to string\n\n" << tester;        
     }
-    // if quote index is not npos, and there is only one, grab until next quote
-    // and then make sure comma was_exp.
-
-    if (was_exp(is, ','))  // this area could yield an array, or a nested object
+    was_exp(is, ','); // this area could yield an array, or a nested object
+    if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
+        [](const char c)
+        { return isspace(c) || ispunct(c) || c == ']'; }))
     {
-        if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
-            [](const char c)
-            { return isspace(c) || ispunct(c) || c == ']'; }))
+        ret = new JSONValue("empty brackets");
+    }
+    else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
+        [](const char c)
+        { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+    {
+        for (size_t i = 0; i != read_size; ++i)
         {
-            ret = new JSONValue("empty brackets");
+            if (!isspace(tester[i]))
+            {
+                slop.push_back(tester[i]);
+            }
         }
-
-        else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
-            [](const char c)
-            { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+        if (slop.find('.') != string::npos)
         {
-            for (size_t i = 0; i != read_size; ++i)
-            {
-                if (!isspace(tester[i]))
-                {
-                    slop.push_back(tester[i]);
-                }
-            }
-            if (slop.find('.') != string::npos)
-            {
-                outlog << "argument to stod was:  " << slop << '\n';
-                ret = new JSONValue(std::stod(slop));
-            }
-            else
-            {
-                outlog << "argument to stoi was:  " << slop << '\n';
-                ret = new JSONValue(std::stoi(slop));
-            }
+            outlog << "argument to stod was:  " << slop << '\n';
+            ret = new JSONValue(std::stod(slop));
         }
         else
         {
-            bool has_square = tester.find('[') != string::npos;
-            bool has_curly = tester.find('{') != string::npos;
-            if (has_curly || has_square)
-            {  
+            outlog << "argument to stoi was:  " << slop << '\n';
+            ret = new JSONValue(std::stoi(slop));
+        }
+    }
+    else
+    {
+        bool has_square = tester.find('[') != string::npos;
+        bool has_curly = tester.find('{') != string::npos;
+        if (has_curly || has_square)
+        {  
 
-                ret = fix_nested(is, ']', tester);
-                return ret;               
-            }
-            else 
+            ret = fix_nested(is, ']', tester);
+            return ret;               
+        }
+        else 
+        {
+            string noquotes;
+            for (const auto& ch : tester)
+                if (ch != '"' && ch != ']' && ch != '}')
+                    noquotes += ch;
+            if (noquotes.find("true") != string::npos)
             {
-                string noquotes;
-                for (const auto& ch : tester)
-                    if (ch != '"' && ch != ']')
-                        noquotes += ch;
-                if (noquotes == "null")
-                    ret = new JSONValue(0);
-                else
-                    ret = new JSONValue(noquotes);
+                string the_rest(noquotes);
+                the_rest.erase(the_rest.find("true"), 4);
+                if (all_of(the_rest.cbegin(), the_rest.cend(), []
+                (const char& c) { return isspace(c) || c == ']'
+                    || c == '}' || !isalpha(c) || !isdigit(c); }))
+                {
+                    JSONValue* jb = new JSONValue();
+                    jb->b_eq(true);
+                    ret = jb;
+                }
             }
+            else if (noquotes.find("false") != string::npos)
+            {
+                string the_rest(noquotes);
+                the_rest.erase(the_rest.find("false"), 5);
+                if (all_of(the_rest.cbegin(), the_rest.cend(), []
+                (const char& c) { return isspace(c) || c == ']'
+                    || c == '}' || !isalpha(c) || !isdigit(c); }))
+                {
+                    JSONValue* jb = new JSONValue();
+                    jb->b_eq(false);
+                    ret = jb;
+                }
+            }
+            else if (noquotes == "null")
+                ret = new JSONValue(0);
+            else
+                ret = new JSONValue(noquotes);
         }
     }
     // if we're here, there was no nested object, only a value

@@ -51,7 +51,7 @@ JSONValue& JSONValue::operator=(int i)
     val = INT;
     return *this;
 }
-JSONValue& JSONValue::operator=(bool b)
+JSONValue& JSONValue::b_eq(bool b)
 {
     using std::string;
     if (val == STR) sval.~string();
@@ -89,17 +89,3 @@ void JSONValue::copyUnion(const JSONValue& j)
         case JSONValue::STR: new (&sval) string(j.sval); break;
     }
 }
-
-//std::ostream& operator<<(std::ostream& os, JSONValue* j)
-//{
-//    if (j->val == JSONValue::INT)
-//        os << j->ival;
-//    else if (j->val == JSONValue::DBL)
-//        os << j->dval;
-//    else if (j->val == JSONValue::BOOL)
-//        os << std::boolalpha << j->bval << std::noboolalpha;
-//    else if (j->val == JSONValue::STR)
-//        os << j->sval;
-//
-//    return os;
-//}

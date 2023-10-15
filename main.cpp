@@ -20,5 +20,9 @@ int main()
     for (const auto& key : steve->key_index())
         cout << key << '\n';
 
+    bob["foodSearchCriteria"]->print(cout);
+
+    cout << bob["foodSearchCriteria"]->at("requireAllWords")->type();
+
 
 }

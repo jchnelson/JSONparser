@@ -24,7 +24,7 @@ public:
     std::ostream& print(std::ostream& os);
     JSONBase* at(const std::string&);
     JSONValue& operator=(int i);
-    JSONValue& operator=(bool b);
+    JSONValue& b_eq(bool b);
     JSONValue& operator=(double d);
     JSONValue& operator=(std::string s);
     JSONValue& operator=(const JSONValue&);
