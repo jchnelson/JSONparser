@@ -5,11 +5,20 @@ using std::cout;
 
 int main()
 {
-    JSONObject bob("sample.json");
+    JSONObject bob("counter_query.json");
 
-    print_object_info(bob);
+    JSONBase* bobp = &bob;
 
-    cout << bob.geto(0)->get_keys().size() << " keys in nested object\n";
+    //bob.print(cout);
+    cout << bob["totalHits"]->type() << '\n';
 
-    cout << *bob.key_obj("glossary")->key_obj("GlossDiv")->key_obj("GlossList")->key_obj("GlossEntry")->key_obj("GlossDef")->key_val("para");
+    for (const auto& key : bob.key_index())
+        cout << key << '\n';
+
+    JSONObject* steve = dynamic_cast<JSONObject*>(bob["foods"]->at("1")->at("foodNutrients"));
+
+    for (const auto& key : steve->key_index())
+        cout << key << '\n';
+
+
 }

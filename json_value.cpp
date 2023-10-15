@@ -9,6 +9,29 @@ JSONValue::JSONValue(const JSONValue& j)
     val = j.val;
 }
 
+JSONBase* JSONValue::operator[](const std::string&)
+{
+    return 0;
+}
+JSONBase* JSONValue::at(const std::string&)
+{
+    return 0;
+}
+
+std::ostream& JSONValue::print(std::ostream& os)
+{
+    if (val == JSONValue::INT)
+        os << ival;
+    else if (val == JSONValue::DBL)
+        os << dval;
+    else if (val == JSONValue::BOOL)
+        os << std::boolalpha << bval << std::noboolalpha;
+    else if (val == JSONValue::STR)
+        os << sval;
+
+    return os;
+}
+
 JSONValue& JSONValue::operator=(const JSONValue& j)
 {
     using std::string;
@@ -67,16 +90,16 @@ void JSONValue::copyUnion(const JSONValue& j)
     }
 }
 
-std::ostream& operator<<(std::ostream& os, const JSONValue& j)
-{
-    if (j.val == JSONValue::INT)
-        os << j.ival;
-    else if (j.val == JSONValue::DBL)
-        os << j.dval;
-    else if (j.val == JSONValue::BOOL)
-        os << std::boolalpha << j.bval << std::noboolalpha;
-    else if (j.val == JSONValue::STR)
-        os << j.sval;
-
-    return os;
-}
+//std::ostream& operator<<(std::ostream& os, JSONValue* j)
+//{
+//    if (j->val == JSONValue::INT)
+//        os << j->ival;
+//    else if (j->val == JSONValue::DBL)
+//        os << j->dval;
+//    else if (j->val == JSONValue::BOOL)
+//        os << std::boolalpha << j->bval << std::noboolalpha;
+//    else if (j->val == JSONValue::STR)
+//        os << j->sval;
+//
+//    return os;
+//}

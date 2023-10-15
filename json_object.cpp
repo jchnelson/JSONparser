@@ -1,11 +1,13 @@
 
 #include <vector>
 #include <string>
+#include <map>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <functional>
 #include <stdexcept>
 
 #include "json_object.h"
@@ -14,35 +16,63 @@
 
 using std::string;
 using std::vector;
-using std::begin;
-using std::end;
 using std::cout;
 
 bool zero_count = false;
 
 std::ofstream outlog("log.txt");
 
+JSONBase* JSONObject::operator[](const std::string& s)
+{
+    return valmap.at(s);
+}
+JSONBase* JSONObject::at(const std::string& s)
+{
+    return valmap.at(s);
+}
+
+std::ostream& JSONObject::print(std::ostream& os)
+{
+
+    size_t objects_count = count_if(begin(), end(),
+        [](const std::pair<std::string, JSONBase*> p)
+        { return p.second->type() == 'j'; });
+
+    size_t values_count = count_if(begin(), end(),
+        [](const std::pair<std::string, JSONBase*> p)
+        { return p.second->type() != 'j'; });
+    os << "number of keys: " << keyindex.size() << '\n';
+    os << "objects : " << objects_count << '\n' << "values: "
+        << values_count << "\n\n";
+
+    for (size_t i = 0; i != keyindex.size(); ++i)
+    {
+        os << std::setw(20) << std::left << keyindex[i] << "type: "
+            << type() << "  \n";
+        valmap[keyindex[i]]->print(os);
+        os << '\n';
+    }
+    return os;
+}
+
 JSONObject::JSONObject(const std::string fn)
     : jsf(new std::fstream(fn))
 {
-
     if (jsf->get() != '{')
         throw std::runtime_error("Invalid JSON");
 
     while (jsf)
     {
-        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char
-        values.push_back(get_next_value(*jsf));
-        if (values.back() == 0)
-            keys.back().second = 'j';
-        else
-            keys.back().second = values.back()->type();
-        if (none_of(keys.back().first.cbegin(), keys.back().first.cend(), []
-        (const char& c) { return isalpha(c) || isdigit(c); }))
+        string newkey = get_next_key(*jsf);
+        auto newvalue = get_next_value(*jsf);
+        valmap.insert({ newkey, newvalue });
+        keyindex.push_back(newkey);
+
+        if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
+        (const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
         {
-            keys.pop_back();
-            values.pop_back();
-            obj_values.pop_back();
+            keyindex.pop_back();
+            valmap.erase(newkey);
         }
         if (zero_count)
             break;
@@ -62,18 +92,16 @@ JSONObject::JSONObject(std::istream* js)
 
     while (*jsf)
     {
-        keys.push_back({ get_next_key(*jsf), ' ' });  // placeholder char
-        values.push_back(get_next_value(*jsf));
-        if (values.back() == 0)
-            keys.back().second = 'j';
-        else
-            keys.back().second = values.back()->type();
-        if (none_of(keys.back().first.cbegin(), keys.back().first.cend(), []
-        (const char& c) { return isalpha(c) || isdigit(c); }))
+        string newkey = get_next_key(*jsf);
+        auto newvalue = get_next_value(*jsf);
+        valmap.insert({ newkey, newvalue });
+        keyindex.push_back(newkey);
+
+        if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
+        (const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
         {
-            keys.pop_back();
-            values.pop_back();
-            obj_values.pop_back();
+            keyindex.pop_back();
+            valmap.erase(newkey);
         }
         if (zero_count)
             break;
@@ -81,100 +109,6 @@ JSONObject::JSONObject(std::istream* js)
     delete jsf;
     jsf = 0;
 }
-
-JSONValue* JSONObject::getv(int i)
-{
-    if (values[i] != 0)
-        return values[i];
-    else
-        return 0;
-}
-JSONValue* JSONObject::getv(int i , int j)
-{
-    if (obj_values[i] != 0)
-        return obj_values[i]->get_values()[j];
-    else
-        return 0;
-}
-JSONValue* JSONObject::getv(int i, int j, int k)
-{
-    if (obj_values[i] != 0 && obj_values[i]->get_nested()[j] != 0)
-        return obj_values[i]->get_nested()[j]->get_values()[k];
-    else
-        return 0;
-}
-JSONValue* JSONObject::getv(int i , int j , int k , int l)
-{
-    if (obj_values[i] != 0 && obj_values[i]->get_nested()[j] != 0
-        && obj_values[i]->get_nested()[j]->get_nested()[k] != 0)
-
-        return obj_values[i]->get_nested()[j]->get_nested()[k]->get_values()[l];
-    else
-        return 0;
-}
-
-JSONObject* JSONObject::geto(int i)
-{
-    return get_nested()[i];
-}
-JSONObject* JSONObject::geto(int i, int j)
-{
-    if (get_nested()[i] != 0)
-        return get_nested()[i]->get_nested()[j];
-    else 
-        return 0;
-}
-JSONObject* JSONObject::geto(int i, int j, int k)
-{
-    if (get_nested()[i] != 0 && get_nested()[i]->get_nested()[j] != 0)
-        return get_nested()[i]->get_nested()[j]->get_nested()[k];
-    else
-        return 0;
-}
-JSONObject* JSONObject::geto(int i, int j, int k, int l)
-{
-    if (get_nested()[i] != 0 && get_nested()[i]->get_nested()[j] != 0
-        && get_nested()[i]->get_nested()[j]->get_nested()[k])
-
-        return get_nested()[i]->get_nested()[j]->get_nested()[k]->get_nested()[l];
-    else
-        return 0;
-}
-
-JSONValue* JSONObject::key_val(const std::string& s)
-{
-    auto itempos = find_if(keys.cbegin(), keys.cend(), [&]
-    (std::pair<std::string, char> key) { return key.first == s; });
-
-    if (itempos != keys.cend())
-    {
-        size_t index = itempos - keys.cbegin();
-        return values[index];
-    }
-    else
-    {
-        return 0;
-    }
-    
-}
-
-JSONObject* JSONObject::key_obj(const std::string& s)
-{
-    auto itempos = find_if(keys.cbegin(), keys.cend(), [&]
-    (std::pair<std::string, char> key) { return key.first == s; });
-
-    if (itempos != keys.cend())
-    {
-        size_t index = itempos - keys.cbegin();
-        return obj_values[index];
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-
 
 bool JSONObject::was_exp(std::istream& is, const char c)
 {
@@ -196,7 +130,7 @@ void JSONObject::nested_same(std::istream& is,
     char buffer[10000]{};
     size_t charcount = std::count(s.begin(), s.end(), open);
     //outlog << "\nnumber of extra '" << open << "' : " << charcount << '\n';
-    size_t next_index = s.find(open);  // next nested open bracket
+    size_t next_index = s.find(open);
     size_t count = is.gcount();
     while (count != 0 && charcount > 0)
     {
@@ -206,7 +140,7 @@ void JSONObject::nested_same(std::istream& is,
         size_t bobcount = std::count(bob.begin(), bob.end(), open);
         charcount += bobcount;
         size_t prevsize = s.size();
-        s += bob;  // add section 
+        s += bob;
 
         if (was_exp(is, close))
         {
@@ -224,10 +158,9 @@ void JSONObject::nested_same(std::istream& is,
         }
 
     }
-
 }
 
-JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
+JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
 {
     if (s.size() == 0)
         return 0;
@@ -235,25 +168,18 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
     char buffer[10000]{};
     size_t origsize = s.size();
 
-    if (s.find('{') == string::npos)
-        
+    if (s.find('{') == string::npos)       
     {
         size_t index = s.find('[', s.find('[')+1);
         if (index == string::npos) // then it's just an array of values
         {
-            vector<JSONValue*> ret_initial;
-
-
             if (count(s.begin(), s.end(), '[') != count(s.begin(), s.end(), ']'))
                 nested_same(is, '[', ']', s);
-
-
-            // if you find a close end bracket before a colon, it's one value.  
 
             if (s.find(',') == string::npos)  // then its one value in square brackets
                                               // for some reason
             {    
-                JSONValue* oneval = new JSONValue();
+                JSONBase* oneval;
                 s = s.substr(s.find('['));
                 s.erase(0,1);
                 s.erase(s.find(']'),1);
@@ -261,15 +187,14 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 for (const auto& ch : s)
                     if (ch != '"')
                         noquotes.push_back(ch);
-                *oneval = noquotes;
-                ret_initial.push_back(oneval);
-                return new JSONObject(ret_initial);
+                oneval = new JSONValue(noquotes);
+                return oneval;
             }
-            
+            JSONObject* ret_initial = new JSONObject();
             s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('[')+1);
             std::istringstream psarr(s);
-
+            int pos = 0;
             while (psarr)
             {
                 psarr.get(buffer, 10000, ',');
@@ -277,15 +202,16 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 if ( was_exp(psarr, ',') || !psarr )
                 {
                     string slop;
-                    JSONValue* jv = new JSONValue();
-                    if (std::all_of(begin(buffer), begin(buffer) + read_count,
+                    JSONBase* jv;
+                    string pairstring = std::to_string(pos);
+                    if ( std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
                         [](const char c)
                         { return isspace(c) ||  ispunct(c) || c == ']'; }))
                     {
-                        *jv = "empty brackets";
+                        jv = new JSONValue("Empty Brackets");
                     }
 
-                    else if (std::all_of(begin(buffer), begin(buffer) + read_count,
+                    else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
                         [](const char c)
                         { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
                     {
@@ -299,14 +225,13 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                         if (slop.find('.') != string::npos)
                         {
                             //outlog << "argument to stod was:  " << slop << '\n';
-                            *jv = std::stod(slop);
+                            jv = new JSONValue(std::stod(slop));
                         }
                         else
                         {
                             //outlog << "argument to stoi was:  " << slop << '\n';
-                            *jv = std::stoi(slop);
+                            jv = new JSONValue(std::stoi(slop));
                         }
-                        ret_initial.push_back(jv);
                     }
                     else
                     {
@@ -319,16 +244,17 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                             }
                         }
                         if (slop == "null")
-                            *jv = 0;
+                            jv = new JSONValue(0);
                         else
-                            *jv = slop;
-
-                        ret_initial.push_back(jv);
+                            jv = new JSONValue(slop);
                     }
+                    ret_initial->valmap.insert({ pairstring, jv });
+                    ret_initial->keyindex.push_back(pairstring);
+                    ++pos;
                 }
             }
             was_exp(is, ',');
-            return new JSONObject(ret_initial);
+            return ret_initial;
         }
 
         // then we have nested square brackets and no curlies, I don't know 
@@ -354,22 +280,17 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
             auto last_curly = nester.find_last_of('}');
             nester = nester.substr(0, last_curly+1); // discard section with ending ']'
             std::istringstream prf(nester); // "pretend file"
+            int pos = 0;
             while (prf)
             { 
                 prf.get(buffer, 10000, ',');
                 size_t read_count = prf.gcount();
                 string sub(buffer, 0, read_count);
+                string pairstring = std::to_string(pos);
+                nestret->valmap.insert({pairstring, fix_nested(prf, '}', sub)});
+                nestret->keyindex.push_back(pairstring);
+                ++pos;
                 
-                nestret->obj_values.push_back(fix_nested(prf, '}', sub));
-                if (nestret->obj_values.back()->keys.size() != 0)
-                { 
-                    nestret->keys.push_back({nestret->obj_values.back()->keys[0].first,
-                        'j'});  // place keyname of first key to avoid unnamed objects
-                }
-                else
-                { 
-                    nestret->keys.push_back({"no keys in object", 'j'});
-                }
             }
             return nestret;
         }
@@ -387,10 +308,9 @@ JSONObject* JSONObject::fix_nested(std::istream& is, const char c, string& s)
 }
 
 
-JSONValue* JSONObject::get_next_value(std::istream& is)
+JSONBase* JSONObject::get_next_value(std::istream& is)
 {
-    JSONValue* ret = new JSONValue();
-    JSONObject* objret = new JSONObject();
+    JSONBase* ret = 0;
     char buffer[10000]{};
     string slop;
     is.get(buffer, 10000, ',');
@@ -416,14 +336,14 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
 
     if (was_exp(is, ','))  // this area could yield an array, or a nested object
     {
-        if (std::all_of(begin(buffer), begin(buffer) + read_size,
+        if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
             [](const char c)
             { return isspace(c) || ispunct(c) || c == ']'; }))
         {
-            *ret = "empty brackets";
+            ret = new JSONValue("empty brackets");
         }
 
-        else if (std::all_of(begin(buffer), begin(buffer) + read_size,
+        else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
             [](const char c)
             { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
         {
@@ -437,12 +357,12 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             if (slop.find('.') != string::npos)
             {
                 outlog << "argument to stod was:  " << slop << '\n';
-                *ret = std::stod(slop);
+                ret = new JSONValue(std::stod(slop));
             }
             else
             {
                 outlog << "argument to stoi was:  " << slop << '\n';
-                *ret = std::stoi(slop);
+                ret = new JSONValue(std::stoi(slop));
             }
         }
         else
@@ -451,10 +371,8 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
             bool has_curly = tester.find('{') != string::npos;
             if (has_curly || has_square)
             {  
-                delete ret; // JSONValue not needed, only placeholder 
-                ret = 0;
-                objret = fix_nested(is, ']', tester);
-                obj_values.push_back(objret);
+
+                ret = fix_nested(is, ']', tester);
                 return ret;               
             }
             else 
@@ -464,16 +382,13 @@ JSONValue* JSONObject::get_next_value(std::istream& is)
                     if (ch != '"' && ch != ']')
                         noquotes += ch;
                 if (noquotes == "null")
-                    *ret = 0;
+                    ret = new JSONValue(0);
                 else
-                    *ret = noquotes;
+                    ret = new JSONValue(noquotes);
             }
         }
     }
     // if we're here, there was no nested object, only a value
-    delete objret; // so the JSONObject is not needed
-    objret = 0;
-    obj_values.push_back(objret);
     return ret;
 }
 
@@ -501,32 +416,8 @@ std::string JSONObject::get_next_key(std::istream& is)
     return ret ;
 }
 
-
-void print_object_info(JSONObject js)
+std::ostream& operator<<(std::ostream& os, JSONBase* jbp)
 {
-    cout << "\n\n";
-    size_t objects_count = count_if(js.get_nested().cbegin(), js.get_nested().cend(),
-        [](const JSONObject* j) { return j != 0; });
-
-    size_t values_count = count_if(js.get_values().cbegin(), js.get_values().cend(),
-        [](const JSONValue* jv) { return jv != 0; });
-    cout << "number of keys: " << js.get_keys().size() << '\n';
-    cout << "non-null objects : " << objects_count << '\n' << "non-null values: " << values_count << "\n\n";
-
-    for (size_t i = 0; i != js.get_keys().size(); ++i)
-    {
-        cout << std::setw(20) << std::left << js.get_keys()[i].first << "type:"
-            << js.get_keys()[i].second << "    ";
-
-        if (js.get_keys()[i].second == 'j')
-            cout << "nested object has " << js.get_nested()[i]->get_keys().size()
-            << " keys, " << js.get_nested()[i]->get_values().size()
-            << " values and " << count_if(js.get_nested()[i]->get_keys().cbegin(),
-                js.get_nested()[i]->get_keys().cend(), []
-                (std::pair<std::string, char> p) { return p.second == 'j'; })
-            << " of those keys' values are objects\n";
-        else
-            cout << '\n';
-    }
-    cout << '\n';
+    jbp->print(os);
+    return os;
 }
