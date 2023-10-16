@@ -131,7 +131,7 @@ void JSONObject::nested_same(std::istream& is,
     size_t charcount = std::count(s.begin(), s.end(), open);
     //outlog << "\nnumber of extra '" << open << "' : " << charcount << '\n';
     size_t next_index = s.find(open);
-    size_t count = is.gcount();
+    size_t count = 1;  // non-zero just to enter condition
     while (count != 0 && charcount > 0)
     {
         is.get(buffer, 10000, close); // to next close
@@ -185,7 +185,7 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 s.erase(s.find(']'),1);
                 string noquotes;
                 for (const auto& ch : s)
-                    if (ch != '"')
+                    if (ch != '"' && ch != '\n')
                         noquotes.push_back(ch);
                 oneval = new JSONValue(noquotes);
                 return oneval;
@@ -213,11 +213,12 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
 
                 else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_count,
                     [](const char c)
-                    { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+                    { return isspace(c) || isdigit(c) 
+                        || c == ']' || c == '.' || c =='}'; }))
                 {
                     for (size_t i = 0; i != read_count; ++i)
                     {
-                        if (!isspace(buffer[i]) && buffer[i] != ']')
+                        if (!isspace(buffer[i]) && buffer[i] != ']' && buffer[i] != '\n')
                         {
                             slop.push_back(buffer[i]);
                         }
@@ -238,7 +239,8 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                     bool initial_space_skipped = false;
                     for (size_t i = 0; i != read_count; ++i)
                     {
-                        if (buffer[i] != '"' && buffer[i] != ']' && buffer[i] != '}')
+                        if (buffer[i] != '"' && buffer[i] != ']' 
+                            && buffer[i] != '}' && buffer[i] != '\n')
                         {
                             slop.push_back(buffer[i]);
                         }
@@ -314,8 +316,7 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 string pairstring = std::to_string(pos);
                 nestret->valmap.insert({pairstring, fix_nested(prf, '}', sub)});
                 nestret->keyindex.push_back(pairstring);
-                ++pos;
-                
+                ++pos;        
             }
             return nestret;
         }
@@ -357,15 +358,18 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
             << " characters to string\n\n" << tester;        
     }
     was_exp(is, ','); // this area could yield an array, or a nested object
+    was_exp(is, ','); // why are there two sometimes????
     if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
         [](const char c)
         { return isspace(c) || ispunct(c) || c == ']'; }))
     {
-        ret = new JSONValue("empty brackets");
+        string empty = "empty brackets";
+        ret = new JSONValue(empty);
     }
     else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
         [](const char c)
-        { return isspace(c) || isdigit(c) || c == ']' || c == '.'; }))
+        { return isspace(c) || isdigit(c) 
+            || c == ']' || c == '.' || c == '}';}))
     {
         for (size_t i = 0; i != read_size; ++i)
         {
@@ -399,7 +403,7 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
         {
             string noquotes;
             for (const auto& ch : tester)
-                if (ch != '"' && ch != ']' && ch != '}')
+                if (ch != '"' && ch != ']' && ch != '}' && ch != '\n')
                     noquotes += ch;
             if (noquotes.find("true") != string::npos)
             {
@@ -433,7 +437,6 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
                 ret = new JSONValue(noquotes);
         }
     }
-    // if we're here, there was no nested object, only a value
     return ret;
 }
 
@@ -451,11 +454,13 @@ std::string JSONObject::get_next_key(std::istream& is)
     {
 
         outlog << arr[i];
-        if (arr[i] != '"' && !isspace(arr[i]))
+        if (arr[i] != '"' && !isspace(arr[i]) && arr[i] != '\n')
             ret.push_back(arr[i]);
     }
     //outlog << '\n';
     //outlog << "returning " << ret << " as next key\n";
+    if (ret.find("finalFoodInputFoods") != string::npos)
+        cout << "bob";
     if (read_size == 0)
         zero_count = true;
     return ret ;
@@ -465,4 +470,59 @@ std::ostream& operator<<(std::ostream& os, JSONBase* jbp)
 {
     jbp->print(os);
     return os;
+}
+
+JSONObject& keyobj(JSONBase* jsb)
+{
+    return *dynamic_cast<JSONObject*>(jsb);
+}
+
+JSONValue& keyval(JSONBase* jsb)
+{
+    return *dynamic_cast<JSONValue*>(jsb);
+}
+
+void out_object(std::ostringstream& fields, 
+    std::ostringstream& records, JSONObject& job, const std::string& key)
+{
+    for (const auto& nextkey : job.key_index())
+    {
+
+        if (job.at(nextkey)->type() != 'j')
+        {
+            fields << key << "." << nextkey << ',';
+            records << job.at(nextkey) << ',';
+        }
+        else
+        {
+            string forward = key + '.' + nextkey;
+            out_object(fields, records, keyobj(job.at(nextkey)), forward );
+        }
+    }
+}
+
+std::string JSONObject::to_csv()
+{
+    std::ostringstream fields;
+    std::ostringstream records;
+    for (const auto& key : keyindex)
+    { 
+        
+        if (at(key)->type() != 'j')
+        {
+            fields << key << ',';
+            records << at(key) << ',';
+        }
+        else
+        {
+            out_object(fields, records, keyobj(at(key)), key);
+        }
+    }
+    string field = fields.str();
+    field.pop_back();
+    string record = records.str();
+    record.pop_back();
+    // each endpoint is a field, and will go along the top, and each nesting level
+    // will show all keys, for example foodSearchCriteria/query
+    return field + '\n' + record + '\n';
 }

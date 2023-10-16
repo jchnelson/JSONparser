@@ -1,28 +1,36 @@
 #include <iostream>
+#include <fstream>
 #include "json_object.h"
 
 using std::cout;
 
+
 int main()
 {
-    JSONObject bob("counter_query.json");
+    JSONObject bob("sample.json");
 
     JSONBase* bobp = &bob;
 
     //bob.print(cout);
-    cout << bob["totalHits"]->type() << '\n';
+    //cout << bob["totalHits"]->type() << '\n';
 
     for (const auto& key : bob.key_index())
         cout << key << '\n';
 
-    JSONObject* steve = dynamic_cast<JSONObject*>(bob["foods"]->at("1")->at("foodNutrients"));
+    cout << '\n';
 
-    for (const auto& key : steve->key_index())
-        cout << key << '\n';
+    //auto steve = keyobj(bob["foods"]->at("16"));
 
-    bob["foodSearchCriteria"]->print(cout);
+    //for (const auto& key : steve.key_index())
+    //    cout << key << '\n';
 
-    cout << bob["foodSearchCriteria"]->at("requireAllWords")->type();
+    //bob["foodSearchCriteria"]->print(cout);
+
+    //cout << bob["foodSearchCriteria"]->at("requireAllWords")->type();
+
+    std::ofstream see_ess_vee("output.csv");
+
+    see_ess_vee << bob.to_csv();
 
 
 }

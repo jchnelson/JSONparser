@@ -30,6 +30,7 @@ public:
     std::map<std::string, JSONBase*>::iterator end() { return valmap.end(); }
     char type() { return 'j'; }
     const std::vector<std::string>& key_index() const { return keyindex; }
+    std::string to_csv();
 
 
 
@@ -44,5 +45,7 @@ private:
     JSONBase* get_next_value(std::istream&);   
 };
 
-std::ostream& print_object_info(std::ostream&, JSONBase*);
+
 std::ostream& operator<<(std::ostream&, JSONBase*);
+JSONObject& keyobj(JSONBase* jsb);
+JSONValue& keyval(JSONBase* jsb);
