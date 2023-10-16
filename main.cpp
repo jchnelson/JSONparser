@@ -28,9 +28,9 @@ int main()
 
     //cout << bob["foodSearchCriteria"]->at("requireAllWords")->type();
 
-    std::ofstream see_ess_vee("output.csv");
+    //std::ofstream see_ess_vee("output.csv");
 
-    see_ess_vee << bob.to_csv();
+    //see_ess_vee << bob.to_csv();
 
 
 }

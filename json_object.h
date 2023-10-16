@@ -34,6 +34,8 @@ public:
 
 
 
+
+
 private:
     std::istream* jsf = 0;
     std::map<std::string, JSONBase*> valmap;

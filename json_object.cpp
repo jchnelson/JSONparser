@@ -474,6 +474,7 @@ std::ostream& operator<<(std::ostream& os, JSONBase* jbp)
 
 JSONObject& keyobj(JSONBase* jsb)
 {
+
     return *dynamic_cast<JSONObject*>(jsb);
 }
 
@@ -522,7 +523,5 @@ std::string JSONObject::to_csv()
     field.pop_back();
     string record = records.str();
     record.pop_back();
-    // each endpoint is a field, and will go along the top, and each nesting level
-    // will show all keys, for example foodSearchCriteria/query
     return field + '\n' + record + '\n';
 }
