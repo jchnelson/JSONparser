@@ -21,6 +21,7 @@ using std::cout;
 bool zero_count = false;
 
 std::ofstream outlog("log.txt");
+std::string keepers = "123456789.,!?abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 JSONBase* JSONObject::operator[](const std::string& s)
 {
@@ -174,7 +175,14 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         if (index == string::npos) // then it's just an array of values
         {
             if (count(s.begin(), s.end(), '[') != count(s.begin(), s.end(), ']'))
+            {
                 nested_same(is, '[', ']', s);
+                if (any_of(s.begin() + origsize, s.end(), [] (const char& c) 
+                    { return isdigit(c) || isalpha(c);} ) )
+                    s.insert(s.begin() + origsize, ',');
+                // if there was a second value, replace the comma
+
+            }
 
             if (s.find(',') == string::npos)  // then its one value in square brackets
                                               // for some reason
@@ -191,7 +199,7 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 return oneval;
             }
             JSONObject* ret_initial = new JSONObject();
-            s.insert(s.begin() + origsize, ',');
+            //s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('[')+1);
             std::istringstream psarr(s);
             int pos = 0;
@@ -274,7 +282,17 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                     else if (slop == "null")
                         jv = new JSONValue(0);
                     else
-                        jv = new JSONValue(slop);
+                    {
+                        if (slop[0] == ' ')
+                            slop.erase(0, 1);
+                        size_t last_letter = slop.find_last_of(keepers);
+                        if (slop.size() > 1 && all_of(slop.begin() + 
+                            last_letter + 1, slop.end(), []
+                        (const char& c) { return isspace(c); }) )
+                            slop = slop.substr(0, last_letter + 1);
+
+                            jv = new JSONValue(slop);
+                    }
                 }
                 ret_initial->valmap.insert({ pairstring, jv });
                 ret_initial->keyindex.push_back(pairstring);
@@ -395,7 +413,6 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
         bool has_curly = tester.find('{') != string::npos;
         if (has_curly || has_square)
         {  
-
             ret = fix_nested(is, ']', tester);
             return ret;               
         }
@@ -405,6 +422,14 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
             for (const auto& ch : tester)
                 if (ch != '"' && ch != ']' && ch != '}' && ch != '\n')
                     noquotes += ch;
+            if (noquotes[0] == ' ')
+                noquotes.erase(0,1);
+            size_t last_letter = noquotes.find_last_of(keepers);
+            if (noquotes.size() > 1 && all_of(noquotes.begin() + 
+                last_letter + 1, noquotes.end(), []
+            (const char& c) { return isspace(c); }) )
+                noquotes = noquotes.substr(0, last_letter+1);
+
             if (noquotes.find("true") != string::npos)
             {
                 string the_rest(noquotes);
@@ -459,8 +484,7 @@ std::string JSONObject::get_next_key(std::istream& is)
     }
     //outlog << '\n';
     //outlog << "returning " << ret << " as next key\n";
-    if (ret.find("finalFoodInputFoods") != string::npos)
-        cout << "bob";
+
     if (read_size == 0)
         zero_count = true;
     return ret ;
@@ -524,4 +548,103 @@ std::string JSONObject::to_csv()
     string record = records.str();
     record.pop_back();
     return field + '\n' + record + '\n';
+}
+
+void JSONObject::out_fileobject(std::ofstream& jout, JSONObject& j, 
+    size_t& curr_ind, bool is_array, bool is_nested)
+{ 
+    
+    if (!is_array && is_nested)
+        jout << string(curr_ind, ' ');
+    if (!is_array)
+        jout << "{\n";
+    curr_ind += 4;
+    for (size_t i = 0; i != j.keyindex.size(); ++i)
+    {
+        if (!is_array)
+            jout << string(curr_ind, ' ') << '"' << j.keyindex[i] << '"' << ": ";
+        char keytype = j.at(j.keyindex[i])->type();
+        if (keytype != 'j')
+        {
+            if (is_array)
+                jout << string(curr_ind, ' ');
+            if (keytype != 's')
+                jout << j.at(j.keyindex[i]);
+            else
+                jout  << '"' << j.at(j.keyindex[i]) << '"';
+        }
+        else
+        {
+            auto& currobj = keyobj(j.at(j.keyindex[i]));
+            if (all_of(currobj.keyindex.begin(), currobj.keyindex.end(), 
+                [&](const string& s) { return all_of(s.begin(), s.end(), 
+                    [] (const char c) { return isdigit(c); } ); } ))
+            {
+                // then it's an array
+                jout << "[\n";
+                out_fileobject(jout, currobj, curr_ind, true, false); 
+                jout << string(curr_ind, ' ') << "]";
+            }
+            else if (is_array && !is_nested)
+            {
+                out_fileobject(jout, currobj, curr_ind, false, true);
+                jout << string(curr_ind, ' ') << "}";
+            }
+            else
+            {
+                out_fileobject(jout, currobj, curr_ind, false, false);
+                jout << string(curr_ind, ' ') << "}";
+            }
+        }
+        if (i < j.keyindex.size() - 1)
+            jout << ",\n";
+        else
+            jout << '\n';
+    }
+    curr_ind -= 4;
+}
+
+
+bool JSONObject::to_file(const std::string& filename)
+{
+    std::ofstream jout(filename);
+    size_t curr_ind = 4;
+    jout<< "{\n";
+
+    for (size_t i = 0; i != keyindex.size(); ++i)
+    {
+        jout << string(curr_ind, ' ') + '"' << keyindex[i] << '"' << ": ";
+        char keytype = at(keyindex[i])->type();
+        if (keytype != 'j')
+        {
+            if (keytype != 's')
+                jout << at(keyindex[i]);
+            else
+                jout << '"' << at(keyindex[i]) << '"';
+        }
+        else
+        { 
+            auto& currobj = keyobj(at(keyindex[i]));
+            if (all_of(currobj.keyindex.begin(), currobj.keyindex.end(),
+                [] (const string& s) { return all_of(s.begin(), s.end(),
+                    [] (const char c) { return isdigit(c); }); }))
+            {
+                // then it's an array
+                jout << "[\n";
+                out_fileobject(jout, currobj, curr_ind, true, false);
+                jout << string(curr_ind, ' ') << "]";
+            }
+            else
+            {
+                out_fileobject(jout, keyobj(at(keyindex[i])), curr_ind, false, false);
+                jout << string(curr_ind, ' ') << '}';
+            }
+        }
+        if (i < keyindex.size() - 1)
+            jout << ",\n";
+        else
+            jout << '\n';
+    }
+    jout << "}\n";
+    return true;
 }

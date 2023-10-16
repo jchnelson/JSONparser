@@ -31,9 +31,8 @@ public:
     char type() { return 'j'; }
     const std::vector<std::string>& key_index() const { return keyindex; }
     std::string to_csv();
-
-
-
+    bool to_file(const std::string&);
+    void out_fileobject(std::ofstream&, JSONObject&, size_t&, bool, bool);
 
 
 private:
