@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "json_object.h"
 
 using std::cout;
@@ -7,24 +8,28 @@ using std::cout;
 
 int main()
 {
-    JSONObject bob("counter_query.json");
+    //JSONObject bob("counter_query.json");
 
-    JSONBase* bobp = &bob;
+    //JSONBase* bobp = &bob;
 
     //bob.print(cout);
     //cout << bob["totalHits"]->type() << '\n';
 
-    for (const auto& key : bob.key_index())
-        cout << key << '\n';
+    //for (const auto& key : bob.key_index())
+    //    cout << key << '\n';
 
-    cout << '\n';
+    //cout << '\n';
 
 
     //std::ofstream see_ess_vee("output.csv");
 
     //see_ess_vee << bob.to_csv();
 
-    bob.to_file("output.json");
+    //bob.to_file("output.json");
+
+    std::vector<JSONValue*> steve = {new JSONValue(2), new JSONValue(4)};
+
+    JSONObject bob(steve);
 
 
 }

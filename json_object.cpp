@@ -23,39 +23,6 @@ bool zero_count = false;
 std::ofstream outlog("log.txt");
 std::string keepers = "123456789.,!?abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-JSONBase* JSONObject::operator[](const std::string& s)
-{
-    return valmap.at(s);
-}
-JSONBase* JSONObject::at(const std::string& s)
-{
-    return valmap.at(s);
-}
-
-std::ostream& JSONObject::print(std::ostream& os)
-{
-
-    size_t objects_count = count_if(begin(), end(),
-        [](const std::pair<std::string, JSONBase*> p)
-        { return p.second->type() == 'j'; });
-
-    size_t values_count = count_if(begin(), end(),
-        [](const std::pair<std::string, JSONBase*> p)
-        { return p.second->type() != 'j'; });
-
-    os << "number of keys: " << keyindex.size() << '\n';
-    os << "objects : " << objects_count << '\n' << "values: "
-        << values_count << "\n\n";
-
-    for (size_t i = 0; i != keyindex.size(); ++i)
-    {
-        os << std::setw(20) << std::left << keyindex[i] << "type: "
-            << type() << "  \n";
-        valmap[keyindex[i]]->print(os);
-        os << '\n';
-    }
-    return os;
-}
 
 JSONObject::JSONObject(const std::string fn)
     : jsf(new std::fstream(fn))
@@ -110,6 +77,67 @@ JSONObject::JSONObject(std::istream* js)
     }
     delete jsf;
     jsf = 0;
+}
+
+JSONObject::JSONObject(std::vector<JSONValue*> jvec)
+{
+
+    size_t count = 0;
+    for (JSONValue* jv : jvec)
+    {
+        std::string newkey = std::to_string(count);
+        keyindex.push_back(newkey);
+        valmap.insert({ newkey, jv });
+        ++count;
+    }
+}
+
+JSONObject::JSONObject(std::vector<JSONObject*> jvec)
+{
+
+    size_t count = 0;
+    for (JSONObject* jv : jvec)
+    {
+        std::string newkey = std::to_string(count);
+        keyindex.push_back(newkey);
+        valmap.insert({ newkey, jv });
+        ++count;
+    }
+}
+
+
+JSONBase* JSONObject::operator[](const std::string& s)
+{
+    return valmap.at(s);
+}
+JSONBase* JSONObject::at(const std::string& s)
+{
+    return valmap.at(s);
+}
+
+std::ostream& JSONObject::print(std::ostream& os)
+{
+
+    size_t objects_count = count_if(begin(), end(),
+        [](const std::pair<std::string, JSONBase*> p)
+        { return p.second->type() == 'j'; });
+
+    size_t values_count = count_if(begin(), end(),
+        [](const std::pair<std::string, JSONBase*> p)
+        { return p.second->type() != 'j'; });
+
+    os << "number of keys: " << keyindex.size() << '\n';
+    os << "objects : " << objects_count << '\n' << "values: "
+        << values_count << "\n\n";
+
+    for (size_t i = 0; i != keyindex.size(); ++i)
+    {
+        os << std::setw(20) << std::left << keyindex[i] << "type: "
+            << type() << "  \n";
+        valmap[keyindex[i]]->print(os);
+        os << '\n';
+    }
+    return os;
 }
 
 bool JSONObject::was_exp(std::istream& is, const char c)

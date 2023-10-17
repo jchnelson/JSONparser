@@ -22,6 +22,9 @@ public:
     explicit JSONObject(std::istream*);
     explicit JSONObject(std::map<std::string, JSONBase*> vm)
         : valmap(vm) { }
+    explicit JSONObject(std::vector<JSONValue*>);
+    explicit JSONObject(std::vector<JSONObject*>);
+
     JSONObject& operator=(const JSONObject&) = default;
     JSONBase* operator[](const std::string&);
     JSONBase* at(const std::string&);
