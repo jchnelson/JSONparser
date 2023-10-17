@@ -29,6 +29,8 @@ JSONBase* JSONObject::operator[](const std::string& s)
 }
 JSONBase* JSONObject::at(const std::string& s)
 {
+    auto fuckmylife = valmap.size();
+    auto fuckyou = keyindex.size();
     if (valmap.at(s) == nullptr)
     { 
         for (const auto& p : keyindex)
@@ -72,6 +74,8 @@ JSONObject::JSONObject(const std::string fn)
     {
         string newkey = get_next_key(*jsf);
         auto newvalue = get_next_value(*jsf);
+        valmap.insert({ newkey, newvalue });
+        keyindex.push_back(newkey);
 
         if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
         (const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
