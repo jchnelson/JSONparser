@@ -34,18 +34,14 @@ JSONObject::JSONObject(const std::string fn)
     {
         string newkey = get_next_key(*jsf);
         auto newvalue = get_next_value(*jsf);
-        valmap.insert({ newkey, newvalue });
-        keyindex.push_back(newkey);
-
-        if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
-        (const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
+        if (newvalue != 0 && any_of(newkey.cbegin(), newkey.cend(), []
+        (const char& c) { return isalpha(c) || isdigit(c); }))
         {
-            keyindex.pop_back();
-            valmap.erase(newkey);
+            valmap.insert({ newkey, newvalue });
+            keyindex.push_back(newkey);
         }
         if (zero_count)
             break;
-
     }
     delete jsf;
     jsf = 0;
@@ -69,13 +65,6 @@ JSONObject::JSONObject(std::istream* js)
             valmap.insert({ newkey, newvalue });
             keyindex.push_back(newkey);
         }
-
-        //if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
-        //(const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
-        //{
-        //    keyindex.pop_back();
-        //    valmap.erase(newkey);
-        //}
         if (zero_count)
             break;
     }
@@ -101,7 +90,6 @@ JSONObject::JSONObject(const std::string& key, std::vector<JSONValue*> jvec)
 
 JSONObject::JSONObject(const std::string& key, std::vector<JSONObject*> jvec)
 {
-
     size_t count = 0;
     JSONObject* first = new JSONObject();
     for (auto& jv : jvec)

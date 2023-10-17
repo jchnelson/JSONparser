@@ -60,8 +60,8 @@ deeply-nested structure in the JSON you're currently using.
 
 If you're looking for just the top-level information, try key_index() which 
 will return a vector of the keys in insertion order. This vector is used 
-to keep the correct order of the keys, and can be handy to access the structure
-when used with at().  
+to keep the correct order of the keys as they were in the original file,
+and can be handy to access the structure when used with at().  
 
 Both JSONValue and JSONObject have the at() function available.  For a JSONObject
 this will return the pointer for the object at that point in the structure,  but when  
@@ -155,7 +155,7 @@ sorting this vector in a different way.
 
 JSONObject* bill = new JSONObject();
 
-bill->insert("Bob", {1, 4, 5});  // initializer list must have all the same type
+bill->insert("Bob", {1, 4, 5});  // initializer list must have all the same type, and be valid for JSONValue
 bill->insert("Steve", 3);  // any single acceptable type for JSONValue but bool (int, double, string)
 bill->insert("Frank", "An Old Man");
 
