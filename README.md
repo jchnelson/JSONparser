@@ -28,10 +28,10 @@ example.json had contained the following data:
 
 ```
 {
-	"example": "text",
-	"more": {
-		"example": true
-	}
+    "example": "text",
+    "more": {
+        "example": true
+    }
 }
 
 ```
@@ -53,7 +53,26 @@ of at() directly.  This will output the value in a JSONValue pointed to, or
 when used with a JSONObject will show the entire nested structure.  This can
 be a bit much when it's a large JSON, so be aware.  It might be better 
 to output a specific nested item if there is a deeply-nested structure in
-the JSON you're currently using.  
+the JSON you're currently using. 
+
+Both JSONValue and JSONObject have the at() function available, but for a 
+value, this will always return a null pointer.  This, or the type() member
+function, can be used to test whether a pointer is an object or a value in 
+the JSON structure.  type() returns a char, 'j' for object, 's' for string, 
+'i' for int, 'd' for double, 'b' for bool.
+
+```cplusplus
+
+JSONObject j("example.json");
+
+if (j.at("example")->type() == 's')
+    ; // manipulate string 
+
+if (j.at("example") != 0)
+    ; // do JSONObject things
+
+```
+
 
 To access the nested structure of the JSON that was parsed, you 
 need to know if you're accessing an "endpoint" of the JSON or 
@@ -80,6 +99,40 @@ auto more = keyobj(j.at("more"));  // more is a JSONObject with one key and one 
 
 ```
 
+If the structure contains an array of objects or values (i.e. they don't have a key), this 
+array can be referred to by a string indicating its zero-based index in the array.  For example:
+
+```
+{
+    "example": [
+        "bob",    // "0"
+        "steve",  // "1"
+        "frank"   // "2"
+    ]
+}
+```
+given this JSON, we could access "steve" with:
+
+```cplus
+
+JSONObject j("example.json");
+
+JSONBase* steve_value = j.at("example")->at("1");   // steve_value points to a JSONValue that holds "steve"
+
+std::string steve;
+if (steve_value->type() == 's')
+	steve = keyval(steve_value).get_sval();
+
+```
+
+Please note that these indexes are for convenience of access and will not be written
+back to a JSON.  They will, however, be written when csv output is used.  
+
+get_sval(), get_ival(), get_dval(), and get_bval() can be used to retrieve the value from 
+the JSONValue union, but you'll want to make sure you know the type that the union holds, or
+check that the value is the type you think with type() first. 
+
+
 ## Writing back to a file
 
 A JSONObject has a map which is being accessed with the at() member function.  
@@ -94,3 +147,6 @@ use with care.  This function has no return value.
 
 to_csv() is also available as a member function, but there is not yet any functionality for
 parsing the resulting csv. This function returns a string.
+
+Please note that to_csv() and to_file() are only available for JSONObject, so 
+keyobj(JSONBase*) can be useful if you know an endpoint is a JSONObject.  
