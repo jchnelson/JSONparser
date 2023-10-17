@@ -14,7 +14,6 @@ public:
     JSONValue() : val(INT), ival(0) { }
     JSONValue(int i) : val(INT), ival(i) { }
     JSONValue(double d) : val(DBL), dval(d) { }
-    JSONValue(bool b) : val(BOOL), bval(b) { }
     JSONValue(const std::string& s) : val(STR) { new (&sval) std::string(s); }
     ~JSONValue() { using std::string; if (val == STR) sval.~string(); }
     JSONValue(const JSONValue&);

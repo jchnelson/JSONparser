@@ -79,29 +79,52 @@ JSONObject::JSONObject(std::istream* js)
     jsf = 0;
 }
 
-JSONObject::JSONObject(std::vector<JSONValue*> jvec)
+JSONObject::JSONObject(const std::string& key, std::vector<JSONValue*> jvec)
 {
 
     size_t count = 0;
-    for (JSONValue* jv : jvec)
+    JSONObject* first = new JSONObject();
+    for (auto& jv : jvec)
     {
         std::string newkey = std::to_string(count);
-        keyindex.push_back(newkey);
-        valmap.insert({ newkey, jv });
+        first->keyindex.push_back(newkey);
+        first->valmap.insert({ newkey, jv });
         ++count;
+    }
+    valmap.insert({ key, first });
+    keyindex.push_back(key);
+}
+
+JSONObject::JSONObject(const std::string& key, std::vector<JSONObject*> jvec)
+{
+
+    size_t count = 0;
+    JSONObject* first = new JSONObject();
+    for (auto& jv : jvec)
+    {
+        std::string newkey = std::to_string(count);
+        first->keyindex.push_back(newkey);
+        first->valmap.insert({ newkey, jv });
+        ++count;
+    }
+    valmap.insert({ key, first });
+    keyindex.push_back(key);
+}
+
+JSONObject::~JSONObject()
+{
+    for (const auto& key : keyindex)
+    {
+        delete at(key);
     }
 }
 
-JSONObject::JSONObject(std::vector<JSONObject*> jvec)
+JSONObject::JSONObject(std::map<std::string, JSONBase*> jmap)
+    : valmap(jmap)
 {
-
-    size_t count = 0;
-    for (JSONObject* jv : jvec)
+    for (auto& jpair : jmap)
     {
-        std::string newkey = std::to_string(count);
-        keyindex.push_back(newkey);
-        valmap.insert({ newkey, jv });
-        ++count;
+        keyindex.push_back(jpair.first);
     }
 }
 
@@ -684,4 +707,48 @@ bool JSONObject::to_file(const std::string& filename)
     }
     jout << "}\n";
     return true;
+}
+
+void JSONObject::insert(const std::string& key, JSONValue* jb)
+{
+    valmap.insert({key, jb});
+    keyindex.push_back(key);
+}
+
+void JSONObject::insert(const std::string& key, JSONObject* jb)
+{
+    valmap.insert({ key, jb });
+    keyindex.push_back(key);
+}
+
+void JSONObject::insert(const std::string& key, std::vector<JSONValue*> jvec)
+{
+
+    size_t count = 0;
+    JSONObject* first = new JSONObject();
+    for (auto& jv : jvec)
+    {
+        std::string newkey = std::to_string(count);
+        first->keyindex.push_back(newkey);
+        first->valmap.insert({ newkey, jv });
+        ++count;
+    }
+    valmap.insert({ key, first });
+    keyindex.push_back(key);
+}
+
+void JSONObject::insert(const std::string& key, std::vector<JSONObject*> jvec)
+{
+
+    size_t count = 0;
+    JSONObject* first = new JSONObject();
+    for (auto& jv : jvec)
+    {
+        std::string newkey = std::to_string(count);
+        first->keyindex.push_back(newkey);
+        first->valmap.insert({ newkey, jv });
+        ++count;
+    }
+    valmap.insert({ key, first });
+    keyindex.push_back(key);
 }

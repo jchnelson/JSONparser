@@ -11,7 +11,9 @@ and saving of JSON files for use with C++ projects.
 A JSONObject is comprised of JSONValues and JSONObjects, which both inherit from JSONBase/
 A JSONValue is a managed union of int, double, bool, and std::string.
 
-A file can be read by passing a filename, or an istream pointer
+A file can be read by passing a filename, or an istream pointer to a dynamically-allocated 
+istream, which will be deleted after it is used.
+
 
 ```cplusplus
 
@@ -88,11 +90,11 @@ auto example = j.at("more")->at("example");   // example is a JSONValue that hol
 
 std::cout << example;  // outputs true
 
-auto object = keyobj(example) // this non-member function returns the underlying JSONObject,
+auto object = keyobj(example); // this non-member function returns the underlying JSONObject,
 			      // but will cause an error if the item is not a 
 			      // JSON Object, as in this case.
 
-auto value = keyval(example) // this is fine, value is a JSONValue.
+auto value = keyval(example); // this is fine, value is a JSONValue.
 
 
 auto more = keyobj(j.at("more"));  // more is a JSONObject with one key and one value.  
@@ -105,9 +107,9 @@ array can be referred to by a string indicating its zero-based index in the arra
 ```
 {
     "example": [
-        "bob",    // "0"
-        "steve",  // "1"
-        "frank"   // "2"
+        "bob",
+        "steve",
+        "frank"
     ]
 }
 ```
@@ -131,6 +133,76 @@ back to a JSON.  They will, however, be written when csv output is used.
 get_sval(), get_ival(), get_dval(), and get_bval() can be used to retrieve the value from 
 the JSONValue union, but you'll want to make sure you know the type that the union holds, or
 check that the value is the type you think with type() first. 
+
+
+## Adding or changing items in the structure
+
+The insert() member function can be used to add items to the JSON structure.  Note
+that the items will be added to the internal map as well as the vector index, so
+the insertion order will still determine the order of the resulting JSON file's structure.  
+The key_index() member function can be used to see this order or change it if you like, by 
+sorting this vector in a different way.  
+
+
+```cplusplus
+
+JSONObject* bill = new JSONObject();
+
+bill->insert("Bob", {1, 4, 5});  // initializer list must have all the same type
+bill->insert("Steve", 3);  // any single acceptable type for JSONValue but bool (int, double, string)
+bill->insert("Frank", "An Old Man");
+
+JSONObject* bob = new JSONObject();
+
+bob->insert("Bill", 3.45);
+bob->insert("Steve", {"one", "four", "a lovely walk"});
+
+std::vector<JSONBase*> another{bill, bob};
+
+JSONObject toplevel_object;
+
+toplevel_object.insert("this one", bill);
+toplevel_object.insert("this other one", bob);
+
+toplevel_object.to_file("readme_example.json");
+
+
+```
+
+results in the following JSON structure:
+
+```
+{
+    "this one": {
+        "Bob": [
+            1,
+            4,
+            5
+        ],
+        "Steve": 3,
+        "Frank": "An Old Man"
+    },
+    "this other one": {
+        "Bill": 3.45,
+        "Steve": [
+            "one",
+            "four",
+            "a lovely walk"
+        ]
+    }
+}
+
+```
+
+To create a JSONValue that holds a bool, use the b_eq() member function 
+
+```cplusplus
+
+JSONValue* jv = new JSONValue();
+jv->b_eq(true);
+std::cout << jv->type();  // will output 'b'
+
+```
 
 
 ## Writing back to a file
