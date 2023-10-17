@@ -29,8 +29,6 @@ JSONBase* JSONObject::operator[](const std::string& s)
 }
 JSONBase* JSONObject::at(const std::string& s)
 {
-    auto fuckmylife = valmap.size();
-    auto fuckyou = keyindex.size();
     if (valmap.at(s) == nullptr)
     { 
         for (const auto& p : keyindex)
