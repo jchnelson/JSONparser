@@ -29,6 +29,13 @@ JSONBase* JSONObject::operator[](const std::string& s)
 }
 JSONBase* JSONObject::at(const std::string& s)
 {
+    auto fuckmylife = valmap.size();
+    auto fuckyou = keyindex.size();
+    if (valmap.at(s) == nullptr)
+    { 
+        for (const auto& p : keyindex)
+            cout << p << '\n';
+    }
     return valmap.at(s);
 }
 
@@ -42,6 +49,7 @@ std::ostream& JSONObject::print(std::ostream& os)
     size_t values_count = count_if(begin(), end(),
         [](const std::pair<std::string, JSONBase*> p)
         { return p.second->type() != 'j'; });
+
     os << "number of keys: " << keyindex.size() << '\n';
     os << "objects : " << objects_count << '\n' << "values: "
         << values_count << "\n\n";
@@ -66,8 +74,6 @@ JSONObject::JSONObject(const std::string fn)
     {
         string newkey = get_next_key(*jsf);
         auto newvalue = get_next_value(*jsf);
-        valmap.insert({ newkey, newvalue });
-        keyindex.push_back(newkey);
 
         if (none_of(keyindex.back().cbegin(), keyindex.back().cend(), []
         (const char& c) { return isalpha(c) || isdigit(c); }) || newvalue == 0)
@@ -113,7 +119,6 @@ JSONObject::JSONObject(std::istream* js)
 
 bool JSONObject::was_exp(std::istream& is, const char c)
 {
-    char what = is.peek();
     if (is.peek() == c)
     {
         is.get();
@@ -157,11 +162,10 @@ void JSONObject::nested_same(std::istream& is,
                 break;
             }
         }
-
     }
 }
 
-JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
+JSONBase* JSONObject::fix_nested(std::istream& is, string& s)
 {
     if (s.size() == 0)
         return 0;
@@ -313,8 +317,6 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
         JSONObject* nestret = new JSONObject();
         if (s.find('[') < s.find('{'))
         {
-               // new "file" to be transformed in place, 
-               // set it up how it would be
             nested_same(is, '[', ']', s);
             s.insert(s.begin() + origsize, ',');
             s = s.substr(s.find('[') + 1);
@@ -332,8 +334,12 @@ JSONBase* JSONObject::fix_nested(std::istream& is, const char c, string& s)
                 size_t read_count = prf.gcount();
                 string sub(buffer, 0, read_count);
                 string pairstring = std::to_string(pos);
-                nestret->valmap.insert({pairstring, fix_nested(prf, '}', sub)});
-                nestret->keyindex.push_back(pairstring);
+                auto newvalue = fix_nested(prf, sub);
+                if (newvalue != 0)
+                { 
+                    nestret->valmap.insert({pairstring, newvalue});
+                    nestret->keyindex.push_back(pairstring);
+                }
                 ++pos;        
             }
             return nestret;
@@ -381,7 +387,7 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
         [](const char c)
         { return isspace(c) || ispunct(c) || c == ']'; }))
     {
-        string empty = "empty brackets";
+        string empty = "Empty Brackets";
         ret = new JSONValue(empty);
     }
     else if (std::all_of(std::begin(buffer), std::begin(buffer) + read_size,
@@ -413,7 +419,7 @@ JSONBase* JSONObject::get_next_value(std::istream& is)
         bool has_curly = tester.find('{') != string::npos;
         if (has_curly || has_square)
         {  
-            ret = fix_nested(is, ']', tester);
+            ret = fix_nested(is, tester);
             return ret;               
         }
         else 
@@ -498,7 +504,6 @@ std::ostream& operator<<(std::ostream& os, JSONBase* jbp)
 
 JSONObject& keyobj(JSONBase* jsb)
 {
-
     return *dynamic_cast<JSONObject*>(jsb);
 }
 
@@ -570,6 +575,8 @@ void JSONObject::out_fileobject(std::ofstream& jout, JSONObject& j,
                 jout << string(curr_ind, ' ');
             if (keytype != 's')
                 jout << j.at(j.keyindex[i]);
+            else if (keyval(j.at(j.keyindex[i])).get_sval() == "Empty Brackets")
+                jout << "[\n" + string(curr_ind, ' ') + "]";
             else
                 jout  << '"' << j.at(j.keyindex[i]) << '"';
         }
@@ -620,7 +627,12 @@ bool JSONObject::to_file(const std::string& filename)
             if (keytype != 's')
                 jout << at(keyindex[i]);
             else
-                jout << '"' << at(keyindex[i]) << '"';
+            {
+                if (keyval(at(keyindex[i])).get_sval() == "Empty Brackets")
+                    jout << "[\n" + string(curr_ind, ' ') + "]";
+                else
+                    jout << '"' << at(keyindex[i]) << '"';
+            }
         }
         else
         { 
@@ -631,12 +643,14 @@ bool JSONObject::to_file(const std::string& filename)
             {
                 // then it's an array
                 jout << "[\n";
+                if (keytype != 'j')
+                    cout << "bob";
                 out_fileobject(jout, currobj, curr_ind, true, false);
                 jout << string(curr_ind, ' ') << "]";
             }
             else
             {
-                out_fileobject(jout, keyobj(at(keyindex[i])), curr_ind, false, false);
+                out_fileobject(jout, currobj, curr_ind, false, false);
                 jout << string(curr_ind, ' ') << '}';
             }
         }

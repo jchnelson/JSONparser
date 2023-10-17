@@ -41,7 +41,7 @@ private:
     std::vector<std::string> keyindex;
     bool was_exp(std::istream&, const char);
     void nested_same(std::istream&, const char, const char, std::string&);
-    JSONBase* fix_nested(std::istream&, const char, std::string&);
+    JSONBase* fix_nested(std::istream&, std::string&);
     std::string get_next_key(std::istream&);
     JSONBase* get_next_value(std::istream&);   
 };

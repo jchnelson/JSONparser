@@ -7,7 +7,7 @@ using std::cout;
 
 int main()
 {
-    JSONObject bob("sample.json");
+    JSONObject bob("counter_query.json");
 
     JSONBase* bobp = &bob;
 
