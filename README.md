@@ -53,15 +53,22 @@ bool is_example = j.at("more")->at("example")->get_bval();
 Note that the output operator can be used with the pointer from the return
 of at() directly.  This will output the value in a JSONValue pointed to, or 
 when used with a JSONObject will show the entire nested structure.  This can
-be a bit much when it's a large JSON, so be aware.  It might be better 
-to output a specific nested item if there is a deeply-nested structure in
-the JSON you're currently using. 
+be a bit much when it's a large JSON, so be aware.  
 
-Both JSONValue and JSONObject have the at() function available, but for a 
-value, this will always return a null pointer.  This, or the type() member
-function, can be used to test whether a pointer is an object or a value in 
-the JSON structure.  type() returns a char, 'j' for object, 's' for string, 
-'i' for int, 'd' for double, 'b' for bool.
+It might be better to output a specific nested item if there is a 
+deeply-nested structure in the JSON you're currently using. 
+
+If you're looking for just the top-level information, try key_index() which 
+will return a vector of the keys in insertion order. This vector is used 
+to keep the correct order of the keys, and can be handy to access the structure
+when used with at().  
+
+Both JSONValue and JSONObject have the at() function available.  For a JSONObject
+this will return the pointer for the object at that point in the structure,  but when  
+called on a JSONValue, this will always return a null pointer as there is no key to access
+within a single value.  This, or the type() member function, can be used to test 
+whether a pointer is an object or a value in the JSON structure.  type() returns a char,
+ 'j' for object, 's' for string, 'i' for int, 'd' for double, and 'b' for bool.
 
 ```cplusplus
 
